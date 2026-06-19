@@ -1,0 +1,968 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SweetLife Buffalo — Daily Inventory</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://apis.google.com/js/api.js" async defer></script>
+<script src="https://cdn.emailjs.com/dist/email.min.js"></script>
+<style>
+:root{--pri:#1a1a1a;--acc:#7a9a2e;--adk:#5a7422;--bg:#f4f4f0;--card:#fff;--bdr:#e0e0d8;--txt:#2d2d2d;--mut:#888;--red:#e53935;--grn:#43a047;--org:#fb8c00;--nav:64px;--hdr:68px}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--txt);padding-bottom:var(--nav);min-height:100vh}
+.app-hdr{background:var(--pri);height:var(--hdr);display:flex;align-items:center;padding:0 14px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.35);gap:10px}
+.app-hdr img{height:34px;flex-shrink:0}
+.hdr-div{width:1px;height:28px;background:rgba(255,255,255,.2);flex-shrink:0}
+.hdr-info{flex:1;min-width:0}
+.hdr-info h1{color:#fff;font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hdr-info p{color:rgba(255,255,255,.55);font-size:11px}
+.hdr-act{display:flex;gap:6px;flex-shrink:0;align-items:center}
+.icon-btn{background:rgba(255,255,255,.12);border:none;color:#fff;width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center}
+.icon-btn:active{background:rgba(255,255,255,.25)}
+.bot-nav{position:fixed;bottom:0;left:0;right:0;height:var(--nav);background:var(--pri);display:flex;z-index:100;border-top:1px solid rgba(255,255,255,.08)}
+.nav-it{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:rgba(255,255,255,.45);cursor:pointer;gap:2px;border:none;background:none;font-size:9px;padding:4px 1px;text-transform:uppercase;letter-spacing:.3px}
+.nav-it .ni{font-size:21px;line-height:1}
+.nav-it.active{color:var(--acc)}
+.corner-logo{position:fixed;width:72px;opacity:.13;pointer-events:none;z-index:50;filter:grayscale(30%)}
+.corner-logo.tl{top:calc(var(--hdr) + 8px);left:8px}
+.corner-logo.tr{top:calc(var(--hdr) + 8px);right:8px}
+.corner-logo.bl{bottom:calc(var(--nav) + 8px);left:8px}
+.corner-logo.br{bottom:calc(var(--nav) + 8px);right:8px}
+.screen{display:none;padding:14px;max-width:620px;margin:0 auto}
+.screen.active{display:block}
+.card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.07);border:1px solid var(--bdr)}
+.card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.card-title{font-size:12px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;display:flex;align-items:center;gap:6px}
+.fg{margin-bottom:13px}
+label{display:block;font-size:11px;font-weight:700;color:var(--mut);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px}
+input[type=text],input[type=number],input[type=date],select,textarea{width:100%;padding:11px 13px;border:1.5px solid var(--bdr);border-radius:8px;font-size:16px;color:var(--txt);background:#fff;-webkit-appearance:none;transition:border .2s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--acc);box-shadow:0 0 0 3px rgba(122,154,46,.14)}
+input[type=number]{-moz-appearance:textfield}
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.photo-wrap{margin-bottom:13px}
+.photo-btn{border:2px dashed var(--bdr);border-radius:10px;padding:14px;text-align:center;cursor:pointer;background:#fafaf8;position:relative}
+.photo-btn:hover{border-color:var(--acc);background:#f0f5e8}
+.photo-btn .ph-icon{font-size:28px;margin-bottom:3px}
+.photo-btn p{font-size:12px;color:var(--mut)}
+.photo-btn input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.photo-thumb{width:100%;max-height:180px;object-fit:cover;border-radius:8px;margin-top:8px;display:none}
+.photo-clr{font-size:11px;color:var(--red);cursor:pointer;margin-top:4px;display:none}
+.calc-box{background:linear-gradient(135deg,var(--acc),var(--adk));color:#fff;border-radius:10px;padding:14px;text-align:center;margin:10px 0 14px}
+.calc-box .cv{font-size:32px;font-weight:800;letter-spacing:-1px}
+.calc-box .cl{font-size:11px;opacity:.85;margin-top:2px;text-transform:uppercase;letter-spacing:.4px}
+.calc-row{display:flex;gap:10px;margin-bottom:14px}
+.calc-mini{flex:1;background:#f4f4f0;border-radius:8px;padding:10px;text-align:center;border:1px solid var(--bdr)}
+.calc-mini .cv{font-size:18px;font-weight:800;color:var(--acc)}
+.calc-mini .cl{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.3px}
+.btn{display:block;width:100%;padding:14px;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;text-align:center;margin-top:6px}
+.btn-pri{background:var(--acc);color:#fff}
+.btn-pri:active{background:var(--adk);transform:scale(.98)}
+.btn-sec{background:var(--bdr);color:var(--txt)}
+.btn-danger{background:var(--red);color:#fff}
+.btn:disabled{opacity:.5;pointer-events:none}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.stat-c{background:var(--card);border-radius:12px;padding:14px;border:1px solid var(--bdr);text-align:center}
+.stat-c .sv{font-size:26px;font-weight:800;color:var(--pri);line-height:1}
+.stat-c .sl{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;margin-top:3px}
+.stat-c.ac{border-color:var(--acc)}.stat-c.ac .sv{color:var(--acc)}
+.stat-c.rd{border-color:var(--red)}.stat-c.rd .sv{color:var(--red)}
+.stat-c.or{border-color:var(--org)}.stat-c.or .sv{color:var(--org)}
+.alert-banner{background:#ffebee;border:1.5px solid #ef9a9a;border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:flex-start;gap:10px;color:#c62828;font-size:13px}
+.alert-banner .ai{font-size:20px;flex-shrink:0}
+.hist-item{display:flex;align-items:center;padding:10px 0;border-bottom:1px solid var(--bdr);gap:10px}
+.hist-item:last-child{border:none}
+.hist-dot{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.hist-info{flex:1;min-width:0}
+.hist-val{font-size:15px;font-weight:700}
+.hist-sub{font-size:11px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hist-time{font-size:11px;color:var(--mut);flex-shrink:0}
+.badge{display:inline-block;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:700}
+.b-gr{background:#e8f5e9;color:#2e7d32}.b-rd{background:#ffebee;color:#c62828}.b-or{background:#fff3e0;color:#e65100}.b-bl{background:#e3f2fd;color:#1565c0}.b-pu{background:#f3e5f5;color:#6a1b9a}
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.sec-title{font-size:17px;font-weight:800;color:var(--pri)}
+.date-chip{background:var(--acc);color:#fff;border-radius:7px;padding:3px 9px;font-size:11px;font-weight:700}
+.modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:flex-end}
+.modal-ov.open{display:flex}
+.modal{background:#fff;border-radius:20px 20px 0 0;padding:20px 16px 30px;width:100%;max-height:85vh;overflow-y:auto}
+.modal-handle{width:36px;height:4px;background:var(--bdr);border-radius:2px;margin:0 auto 16px}
+.modal-title{font-size:16px;font-weight:800;margin-bottom:16px}
+.toast{position:fixed;bottom:calc(var(--nav) + 14px);left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:9px 18px;border-radius:20px;font-size:13px;font-weight:600;z-index:400;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+.rg{display:flex;gap:8px}
+.ro{flex:1}.ro input{display:none}
+.ro label{display:block;text-align:center;padding:10px;border:2px solid var(--bdr);border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;color:var(--mut);text-transform:none;letter-spacing:0}
+.ro input:checked+label{border-color:var(--acc);background:#f0f5e8;color:var(--adk)}
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.bar-lbl{font-size:11px;color:var(--mut);width:55px;flex-shrink:0}
+.bar-track{flex:1;height:9px;background:var(--bdr);border-radius:5px;overflow:hidden}
+.bar-fill{height:100%;border-radius:5px;transition:width .6s;background:var(--acc)}
+.bar-fill.danger{background:var(--red)}
+.bar-val{font-size:11px;font-weight:700;width:40px;text-align:right;flex-shrink:0}
+.conn{display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,.5)}
+.conn-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.3)}
+.conn-dot.ok{background:#81c784}.conn-dot.err{background:#ef9a9a}
+.empty{text-align:center;padding:28px 16px;color:var(--mut)}
+.empty .ei{font-size:40px;margin-bottom:8px}
+.empty p{font-size:13px}
+.setup-step{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--bdr)}
+.setup-step:last-child{border:none}
+.setup-num{width:26px;height:26px;border-radius:50%;background:var(--acc);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.setup-txt h4{font-size:13px;font-weight:700;margin-bottom:2px}
+.setup-txt p{font-size:12px;color:var(--mut);line-height:1.5}
+.setup-txt code{background:#f0f0ec;padding:1px 5px;border-radius:4px;font-size:11px;font-family:monospace}
+.adj-row{display:flex;align-items:center;gap:8px;padding:10px;background:#f9f9f6;border-radius:8px;margin-bottom:8px}
+.adj-row input{flex:1;margin-bottom:0}
+.adj-row .adj-lbl{font-size:12px;color:var(--mut);flex-shrink:0;width:60px}
+@media(min-width:600px){.stat-grid{grid-template-columns:repeat(4,1fr)}.screen{padding:20px}}
+</style>
+</head>
+<body>
+
+<!-- Corner logos -->
+<img class="corner-logo tl" id="cl-tl" alt="">
+<img class="corner-logo tr" id="cl-tr" alt="">
+<img class="corner-logo bl" id="cl-bl" alt="">
+<img class="corner-logo br" id="cl-br" alt="">
+
+<header class="app-hdr">
+  <img id="logo-img" alt="SweetLife by Sucro">
+  <div class="hdr-div"></div>
+  <div class="hdr-info">
+    <h1>Buffalo Refinery</h1>
+    <p id="hdr-date">Daily Inventory Tracker</p>
+  </div>
+  <div class="hdr-act">
+    <div class="conn" id="conn-status"><div class="conn-dot" id="conn-dot"></div><span id="conn-lbl">Offline</span></div>
+    <button class="icon-btn" onclick="APP.openConfig()" title="Settings">&#9881;</button>
+  </div>
+</header>
+
+<!-- DASHBOARD -->
+<div class="screen active" id="screen-dashboard">
+  <div class="sec-hdr">
+    <span class="sec-title">&#128202; Daily Summary</span>
+    <span class="date-chip" id="dash-date">Today</span>
+  </div>
+  <div id="alert-container"></div>
+  <div class="stat-grid">
+    <div class="stat-c ac"><div class="sv" id="d-inbound">0.00</div><div class="sl">&#11015; Inbound MT</div></div>
+    <div class="stat-c"><div class="sv" id="d-outbound">0.00</div><div class="sl">&#11014; Outbound MT</div></div>
+    <div class="stat-c or" id="net-card"><div class="sv" id="d-net">0.00</div><div class="sl">&#9878; Net Loss MT</div></div>
+    <div class="stat-c or" id="pct-card"><div class="sv" id="d-pct">0.0%</div><div class="sl">&#128201; Loss %</div></div>
+  </div>
+  <div class="card">
+    <div class="card-hdr"><span class="card-title">&#128200; Outbound Breakdown (MT)</span></div>
+    <div class="bar-row"><span class="bar-lbl">Liquid</span><div class="bar-track"><div class="bar-fill" id="bar-liquid" style="width:0%"></div></div><span class="bar-val" id="bv-liquid">0.00</span></div>
+    <div class="bar-row"><span class="bar-lbl">Truck</span><div class="bar-track"><div class="bar-fill" id="bar-truck" style="width:0%"></div></div><span class="bar-val" id="bv-truck">0.00</span></div>
+    <div class="bar-row"><span class="bar-lbl">Rail</span><div class="bar-track"><div class="bar-fill" id="bar-rail" style="width:0%"></div></div><span class="bar-val" id="bv-rail">0.00</span></div>
+    <div class="bar-row"><span class="bar-lbl">Molasses</span><div class="bar-track"><div class="bar-fill" id="bar-mol" style="width:0%"></div></div><span class="bar-val" id="bv-mol">0.00</span></div>
+  </div>
+  <div class="card">
+    <div class="card-hdr"><span class="card-title">&#128197; 3-Day Weight Loss %</span></div>
+    <div id="three-day-chart"></div>
+  </div>
+  <div class="card">
+    <div class="card-hdr">
+      <span class="card-title">&#128336; Today's Entries</span>
+      <span class="badge b-gr" id="today-count">0</span>
+    </div>
+    <div id="today-history"><div class="empty"><div class="ei">&#128203;</div><p>No entries today</p></div></div>
+  </div>
+</div>
+
+<!-- INBOUND -->
+<div class="screen" id="screen-inbound">
+  <div class="sec-hdr">
+    <span class="sec-title">&#11015; Raw Sugar Inbound</span>
+    <span class="date-chip" id="ib-date"></span>
+  </div>
+  <div class="card">
+    <div class="card-title" style="margin-bottom:14px">&#127981; Loader Entry — Hopper Load</div>
+    <div class="fg">
+      <label>Operator Name</label>
+      <input type="text" id="ib-operator" placeholder="Enter your name" autocomplete="name">
+    </div>
+    <div class="fg">
+      <label>Metric Tons (MT)</label>
+      <input type="number" id="ib-tons" placeholder="0.00" step="0.01" min="0">
+    </div>
+    <div class="fg photo-wrap">
+      <label>&#128247; Photo of Loader Scale</label>
+      <div class="photo-btn" onclick="document.getElementById('ib-photo').click()">
+        <div class="ph-icon">&#128247;</div>
+        <p>Tap to take photo of scale</p>
+        <input type="file" accept="image/*" capture="environment" id="ib-photo" onchange="APP.handlePhoto(this,'ib-prev','ib-clear')">
+      </div>
+      <img class="photo-thumb" id="ib-prev" alt="">
+      <span class="photo-clr" id="ib-clear" onclick="APP.clearPhoto('ib-photo','ib-prev','ib-clear')">&#10005; Remove photo</span>
+    </div>
+    <div class="fg">
+      <label>Notes (optional)</label>
+      <input type="text" id="ib-notes" placeholder="e.g. Load #4, raw cane">
+    </div>
+    <button class="btn btn-pri" onclick="APP.submitInbound()">&#9989; Submit Inbound Load</button>
+  </div>
+  <div class="card">
+    <div class="card-hdr">
+      <span class="card-title">&#128203; Today's Inbound</span>
+      <span class="badge b-gr" id="ib-count">0 loads</span>
+    </div>
+    <div id="ib-history"><div class="empty"><div class="ei">&#11015;</div><p>No inbound entries yet</p></div></div>
+  </div>
+  <div class="card">
+    <div class="card-hdr"><span class="card-title">&#9998; Adjust Previous Entry</span></div>
+    <div class="fg">
+      <label>Select Entry to Adjust</label>
+      <select id="ib-adj-sel"><option value="">— Select an entry —</option></select>
+    </div>
+    <div class="fg">
+      <label>Corrected Metric Tons</label>
+      <input type="number" id="ib-adj-tons" placeholder="0.00" step="0.01" min="0">
+    </div>
+    <button class="btn btn-sec" onclick="APP.adjustInbound()">&#9998; Apply Correction</button>
+  </div>
+</div>
+
+<!-- LIQUID SUGAR -->
+<div class="screen" id="screen-liquid">
+  <div class="sec-hdr">
+    <span class="sec-title">&#127855; Liquid Sugar Out</span>
+    <span class="date-chip" id="ls-date"></span>
+  </div>
+  <div class="card">
+    <div class="card-title" style="margin-bottom:14px">&#128665; Liquid Sugar Truck Shipment</div>
+    <div class="row2">
+      <div class="fg"><label>Client Name</label><input type="text" id="ls-client" placeholder="Client"></div>
+      <div class="fg"><label>PO Number</label><input type="text" id="ls-po" placeholder="PO-####"></div>
+    </div>
+    <div class="row2">
+      <div class="fg"><label>Brix (&#176;Bx)</label><input type="number" id="ls-brix" placeholder="67.0" step="0.1" min="0" max="100" oninput="APP.calcLiquidSugar()"></div>
+      <div class="fg"><label>Net Weight (lbs)</label><input type="number" id="ls-weight" placeholder="0.00" step="0.01" min="0" oninput="APP.calcLiquidSugar()"></div>
+    </div>
+    <div class="calc-box" id="ls-calc-box" style="display:none">
+      <div class="cv" id="ls-mt">0.000</div>
+      <div class="cl">Metric Tons of Liquid Sugar</div>
+    </div>
+    <div class="calc-row" id="ls-calc-row" style="display:none">
+      <div class="calc-mini"><div class="cv" id="ls-solids">0.000</div><div class="cl">Sugar Solids MT</div></div>
+      <div class="calc-mini"><div class="cv" id="ls-water">0.000</div><div class="cl">Water MT</div></div>
+    </div>
+    <div class="fg photo-wrap">
+      <label>&#128196; Bill of Lading (BL)</label>
+      <div class="photo-btn" onclick="document.getElementById('ls-bl').click()">
+        <div class="ph-icon">&#128196;</div><p>Tap to photograph BL</p>
+        <input type="file" accept="image/*" capture="environment" id="ls-bl" onchange="APP.handlePhoto(this,'ls-bl-prev','ls-bl-clear')">
+      </div>
+      <img class="photo-thumb" id="ls-bl-prev"><span class="photo-clr" id="ls-bl-clear" onclick="APP.clearPhoto('ls-bl','ls-bl-prev','ls-bl-clear')">&#10005; Remove</span>
+    </div>
+    <div class="fg photo-wrap">
+      <label>&#128300; Certificate of Analysis (COA)</label>
+      <div class="photo-btn" onclick="document.getElementById('ls-coa').click()">
+        <div class="ph-icon">&#128300;</div><p>Tap to photograph COA</p>
+        <input type="file" accept="image/*" capture="environment" id="ls-coa" onchange="APP.handlePhoto(this,'ls-coa-prev','ls-coa-clear')">
+      </div>
+      <img class="photo-thumb" id="ls-coa-prev"><span class="photo-clr" id="ls-coa-clear" onclick="APP.clearPhoto('ls-coa','ls-coa-prev','ls-coa-clear')">&#10005; Remove</span>
+    </div>
+    <button class="btn btn-pri" onclick="APP.submitLiquid()">&#9989; Submit Liquid Sugar Shipment</button>
+  </div>
+  <div class="card">
+    <div class="card-hdr"><span class="card-title">&#128203; Today's Liquid Sugar</span><span class="badge b-bl" id="ls-count">0 loads</span></div>
+    <div id="ls-history"><div class="empty"><div class="ei">&#127855;</div><p>No liquid sugar shipments today</p></div></div>
+  </div>
+</div>
+
+<!-- TRUCK OUTBOUND -->
+<div class="screen" id="screen-truck">
+  <div class="sec-hdr">
+    <span class="sec-title">&#128665; Truck Outbound</span>
+    <span class="date-chip" id="tk-date"></span>
+  </div>
+  <div class="card">
+    <div class="card-title" style="margin-bottom:14px">&#128665; Dry Sugar Truck Shipment</div>
+    <div class="row2">
+      <div class="fg"><label>Client Name</label><input type="text" id="tk-client" placeholder="Client"></div>
+      <div class="fg"><label>PO Number</label><input type="text" id="tk-po" placeholder="PO-####"></div>
+    </div>
+    <div class="fg"><label>Net Weight (Metric Tons)</label><input type="number" id="tk-mt" placeholder="0.00" step="0.01" min="0"></div>
+    <div class="fg photo-wrap">
+      <label>&#9878; Truck Scale Ticket</label>
+      <div class="photo-btn" onclick="document.getElementById('tk-scale').click()">
+        <div class="ph-icon">&#9878;</div><p>Tap to photograph scale</p>
+        <input type="file" accept="image/*" capture="environment" id="tk-scale" onchange="APP.handlePhoto(this,'tk-scale-prev','tk-scale-clear')">
+      </div>
+      <img class="photo-thumb" id="tk-scale-prev"><span class="photo-clr" id="tk-scale-clear" onclick="APP.clearPhoto('tk-scale','tk-scale-prev','tk-scale-clear')">&#10005; Remove</span>
+    </div>
+    <div class="fg photo-wrap">
+      <label>&#128300; COA Document</label>
+      <div class="photo-btn" onclick="document.getElementById('tk-coa').click()">
+        <div class="ph-icon">&#128300;</div><p>Tap to photograph COA</p>
+        <input type="file" accept="image/*" capture="environment" id="tk-coa" onchange="APP.handlePhoto(this,'tk-coa-prev','tk-coa-clear')">
+      </div>
+      <img class="photo-thumb" id="tk-coa-prev"><span class="photo-clr" id="tk-coa-clear" onclick="APP.clearPhoto('tk-coa','tk-coa-prev','tk-coa-clear')">&#10005; Remove</span>
+    </div>
+    <div class="fg photo-wrap">
+      <label>&#128196; Bill of Lading (BL)</label>
+      <div class="photo-btn" onclick="document.getElementById('tk-bl').click()">
+        <div class="ph-icon">&#128196;</div><p>Tap to photograph BL</p>
+        <input type="file" accept="image/*" capture="environment" id="tk-bl" onchange="APP.handlePhoto(this,'tk-bl-prev','tk-bl-clear')">
+      </div>
+      <img class="photo-thumb" id="tk-bl-prev"><span class="photo-clr" id="tk-bl-clear" onclick="APP.clearPhoto('tk-bl','tk-bl-prev','tk-bl-clear')">&#10005; Remove</span>
+    </div>
+    <button class="btn btn-pri" onclick="APP.submitTruck()">&#9989; Submit Truck Shipment</button>
+  </div>
+  <div class="card">
+    <div class="card-hdr"><span class="card-title">&#128203; Today's Truck Outbound</span><span class="badge b-or" id="tk-count">0 loads</span></div>
+    <div id="tk-history"><div class="empty"><div class="ei">&#128665;</div><p>No truck shipments today</p></div></div>
+  </div>
+</div>
+
+<!-- RAIL OUTBOUND -->
+<div class="screen" id="screen-rail">
+  <div class="sec-hdr">
+    <span class="sec-title">&#128642; Rail Outbound</span>
+    <span class="date-chip" id="rl-date"></span>
+  </div>
+  <div class="card">
+    <div class="card-title" style="margin-bottom:14px">&#128642; Rail Car Shipment</div>
+    <div class="row2">
+      <div class="fg"><label>Client Name</label><input type="text" id="rl-client" placeholder="Client"></div>
+      <div class="fg"><label>Net Weight (MT)</label><input type="number" id="rl-mt" placeholder="0.00" step="0.01" min="0"></div>
+    </div>
+    <div class="fg photo-wrap">
+      <label>&#9878; Rail Scale Ticket</label>
+      <div class="photo-btn" onclick="document.getElementById('rl-scale').click()">
+        <div class="ph-icon">&#9878;</div><p>Tap to photograph rail scale</p>
+        <input type="file" accept="image/*" capture="environment" id="rl-scale" onchange="APP.handlePhoto(this,'rl-scale-prev','rl-scale-clear')">
+      </div>
+      <img class="photo-thumb" id="rl-scale-prev"><span class="photo-clr" id="rl-scale-clear" onclick="APP.clearPhoto('rl-scale','rl-scale-prev','rl-scale-clear')">&#10005; Remove</span>
+    </div>
+    <div class="fg photo-wrap">
+      <label>&#128196; Bill of Lading (BL)</label>
+      <div class="photo-btn" onclick="document.getElementById('rl-bl').click()">
+        <div class="ph-icon">&#128196;</div><p>Tap to photograph BL</p>
+        <input type="file" accept="image/*" capture="environment" id="rl-bl" onchange="APP.handlePhoto(this,'rl-bl-prev','rl-bl-clear')">
+      </div>
+      <img class="photo-thumb" id="rl-bl-prev"><span class="photo-clr" id="rl-bl-clear" onclick="APP.clearPhoto('rl-bl','rl-bl-prev','rl-bl-clear')">&#10005; Remove</span>
+    </div>
+    <button class="btn btn-pri" onclick="APP.submitRail()">&#9989; Submit Rail Shipment</button>
+  </div>
+  <div class="card">
+    <div class="card-hdr"><span class="card-title">&#128203; Today's Rail Outbound</span><span class="badge b-pu" id="rl-count">0 loads</span></div>
+    <div id="rl-history"><div class="empty"><div class="ei">&#128642;</div><p>No rail shipments today</p></div></div>
+  </div>
+</div>
+
+<!-- MOLASSES -->
+<div class="screen" id="screen-molasses">
+  <div class="sec-hdr">
+    <span class="sec-title">&#129749; Molasses Outbound</span>
+    <span class="date-chip" id="ml-date"></span>
+  </div>
+  <div class="card">
+    <div class="card-title" style="margin-bottom:14px">&#129749; Final Molasses Shipment</div>
+    <div class="fg">
+      <label>Mode of Transport</label>
+      <div class="rg">
+        <div class="ro"><input type="radio" name="ml-mode" id="ml-truck" value="Truck" checked><label for="ml-truck">&#128665; Truck</label></div>
+        <div class="ro"><input type="radio" name="ml-mode" id="ml-rail" value="Rail"><label for="ml-rail">&#128642; Rail</label></div>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="fg"><label>Client Name</label><input type="text" id="ml-client" placeholder="Client"></div>
+      <div class="fg"><label>PO Number</label><input type="text" id="ml-po" placeholder="PO-####"></div>
+    </div>
+    <div class="fg"><label>Net Weight (Metric Tons)</label><input type="number" id="ml-mt" placeholder="0.00" step="0.01" min="0"></div>
+    <div class="fg photo-wrap">
+      <label>&#9878; Scale Ticket</label>
+      <div class="photo-btn" onclick="document.getElementById('ml-scale').click()">
+        <div class="ph-icon">&#9878;</div><p>Tap to photograph scale ticket</p>
+        <input type="file" accept="image/*" capture="environment" id="ml-scale" onchange="APP.handlePhoto(this,'ml-scale-prev','ml-scale-clear')">
+      </div>
+      <img class="photo-thumb" id="ml-scale-prev"><span class="photo-clr" id="ml-scale-clear" onclick="APP.clearPhoto('ml-scale','ml-scale-prev','ml-scale-clear')">&#10005; Remove</span>
+    </div>
+    <div class="fg photo-wrap">
+      <label>&#128196; Bill of Lading (BL)</label>
+      <div class="photo-btn" onclick="document.getElementById('ml-bl').click()">
+        <div class="ph-icon">&#128196;</div><p>Tap to photograph BL</p>
+        <input type="file" accept="image/*" capture="environment" id="ml-bl" onchange="APP.handlePhoto(this,'ml-bl-prev','ml-bl-clear')">
+      </div>
+      <img class="photo-thumb" id="ml-bl-prev"><span class="photo-clr" id="ml-bl-clear" onclick="APP.clearPhoto('ml-bl','ml-bl-prev','ml-bl-clear')">&#10005; Remove</span>
+    </div>
+    <button class="btn btn-pri" onclick="APP.submitMolasses()">&#9989; Submit Molasses Shipment</button>
+  </div>
+  <div class="card">
+    <div class="card-hdr"><span class="card-title">&#128203; Today's Molasses</span><span class="badge b-rd" id="ml-count">0 loads</span></div>
+    <div id="ml-history"><div class="empty"><div class="ei">&#129749;</div><p>No molasses shipments today</p></div></div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bot-nav">
+  <button class="nav-it active" data-screen="dashboard"><span class="ni">&#128202;</span>Dashboard</button>
+  <button class="nav-it" data-screen="inbound"><span class="ni">&#11015;</span>Inbound</button>
+  <button class="nav-it" data-screen="liquid"><span class="ni">&#127855;</span>Liquid</button>
+  <button class="nav-it" data-screen="truck"><span class="ni">&#128665;</span>Truck</button>
+  <button class="nav-it" data-screen="rail"><span class="ni">&#128642;</span>Rail</button>
+  <button class="nav-it" data-screen="molasses"><span class="ni">&#129749;</span>Molasses</button>
+</nav>
+
+<!-- CONFIG MODAL -->
+<div class="modal-ov" id="config-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">&#9881; App Configuration</div>
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title" style="margin-bottom:12px">&#128279; Google Sheets Integration</div>
+      <div class="fg"><label>Google Client ID</label><input type="text" id="cfg-client-id" placeholder="xxxx.apps.googleusercontent.com"></div>
+      <div class="fg"><label>API Key</label><input type="text" id="cfg-api-key" placeholder="AIzaSy..."></div>
+      <div class="fg"><label>Spreadsheet ID</label><input type="text" id="cfg-sheet-id" placeholder="1BxiMVs0XRA5nF..."></div>
+    </div>
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title" style="margin-bottom:12px">&#128231; Email Alerts (EmailJS)</div>
+      <div class="fg"><label>EmailJS Public Key</label><input type="text" id="cfg-ejs-key" placeholder="user_xxxxxxxxxx"></div>
+      <div class="fg"><label>Service ID</label><input type="text" id="cfg-ejs-svc" placeholder="service_xxxxxxx"></div>
+      <div class="fg"><label>Template ID</label><input type="text" id="cfg-ejs-tmpl" placeholder="template_xxxxxxx"></div>
+      <p style="font-size:11px;color:var(--mut)">Alert fires to: buffalo@sucro.us &nbsp;|&nbsp; Threshold: &gt;3% over 3 days</p>
+    </div>
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title" style="margin-bottom:10px">&#128218; Setup Guide</div>
+      <div class="setup-step">
+        <div class="setup-num">1</div>
+        <div class="setup-txt"><h4>Google Cloud Project</h4><p>Enable Sheets API + Drive API. Create OAuth 2.0 credentials (Web app). Add your site URL to Authorized Origins. Copy Client ID &amp; API Key above.</p></div>
+      </div>
+      <div class="setup-step">
+        <div class="setup-num">2</div>
+        <div class="setup-txt"><h4>Create Google Spreadsheet</h4><p>New Google Sheet with these tabs: <code>Inbound</code>&nbsp;<code>LiquidSugar</code>&nbsp;<code>TruckOut</code>&nbsp;<code>RailOut</code>&nbsp;<code>Molasses</code>&nbsp;<code>DailySummary</code>. Copy the Sheet ID from the URL.</p></div>
+      </div>
+      <div class="setup-step">
+        <div class="setup-num">3</div>
+        <div class="setup-txt"><h4>EmailJS Setup</h4><p>Sign up at emailjs.com &#183; Connect Gmail &#183; Create template with: <code>{{date}}</code> <code>{{loss_pct}}</code> <code>{{inbound}}</code> <code>{{outbound}}</code>. Set recipient to <code>buffalo@sucro.us</code></p></div>
+      </div>
+    </div>
+    <button class="btn btn-pri" onclick="APP.saveConfig()">&#128190; Save Configuration</button>
+    <button class="btn btn-sec" style="margin-top:8px" onclick="APP.closeConfig()">Cancel</button>
+    <button class="btn btn-danger" style="margin-top:8px" onclick="APP.clearAllData()">&#128465; Clear All Local Data</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── LOGO ──────────────────────────────────────────────────────────
+const LOGO_B64 = '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';
+const LOGO_SRC = 'data:image/png;base64,' + LOGO_B64;
+document.getElementById('logo-img').src = LOGO_SRC;
+['cl-tl','cl-tr','cl-bl','cl-br'].forEach(id => document.getElementById(id).src = LOGO_SRC);
+
+// ── APP ───────────────────────────────────────────────────────────
+const APP = {
+  cfg: {
+    clientId:'', apiKey:'', sheetId:'',
+    ejsKey:'', ejsSvc:'', ejsTmpl:'',
+    alertEmail:'buffalo@sucro.us', threshold:3
+  },
+  data: { entries:[] },
+  tokenClient: null,
+  sheetsReady: false,
+
+  init() {
+    const sc = localStorage.getItem('sl_cfg');
+    if(sc) try { this.cfg = {...this.cfg,...JSON.parse(sc)}; } catch(e){}
+    const sd = localStorage.getItem('sl_data');
+    if(sd) try { this.data = JSON.parse(sd); } catch(e){}
+
+    document.querySelectorAll('.nav-it').forEach(b => {
+      b.addEventListener('click', () => this.showScreen(b.dataset.screen));
+    });
+
+    this.updateDates();
+    this.updateDashboard();
+    this.renderHistories();
+    this.populateAdjSelector();
+
+    if(this.cfg.clientId && this.cfg.apiKey) {
+      window.gapiReady = () => this.initGoogle();
+      if(typeof gapi !== 'undefined') this.initGoogle();
+    }
+    if(this.cfg.ejsKey && typeof emailjs !== 'undefined') emailjs.init(this.cfg.ejsKey);
+  },
+
+  showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-it').forEach(n => n.classList.remove('active'));
+    const s = document.getElementById('screen-'+id);
+    const n = document.querySelector('[data-screen="'+id+'"]');
+    if(s) s.classList.add('active');
+    if(n) n.classList.add('active');
+    if(id==='dashboard') this.updateDashboard();
+    if(id==='inbound') this.populateAdjSelector();
+  },
+
+  updateDates() {
+    const d = new Date();
+    const ds = d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+    document.getElementById('hdr-date').textContent = ds;
+    document.getElementById('dash-date').textContent = ds;
+    ['ib','ls','tk','rl','ml'].forEach(p => {
+      const el = document.getElementById(p+'-date');
+      if(el) el.textContent = d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    });
+  },
+
+  todayStr() { return new Date().toISOString().split('T')[0]; },
+  fmtTime() { return new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}); },
+
+  // ── PHOTOS ──────────────────────────────────────────────────────
+  handlePhoto(inp, prevId, clearId) {
+    const f = inp.files[0];
+    if(!f) return;
+    // compress before storing
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX = 1200;
+        let w = img.width, h = img.height;
+        if(w > MAX){ h = Math.round(h*MAX/w); w = MAX; }
+        if(h > MAX){ w = Math.round(w*MAX/h); h = MAX; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        const compressed = canvas.toDataURL('image/jpeg', 0.75);
+        document.getElementById(prevId).src = compressed;
+        document.getElementById(prevId).style.display = 'block';
+        document.getElementById(clearId).style.display = 'block';
+        inp.dataset.b64 = compressed;
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(f);
+  },
+
+  clearPhoto(inpId, prevId, clearId) {
+    const inp = document.getElementById(inpId);
+    inp.value=''; inp.dataset.b64='';
+    document.getElementById(prevId).style.display='none';
+    document.getElementById(clearId).style.display='none';
+  },
+
+  getPhoto(inpId) { return document.getElementById(inpId).dataset.b64 || ''; },
+
+  // ── SUBMIT INBOUND ──────────────────────────────────────────────
+  submitInbound() {
+    const op = document.getElementById('ib-operator').value.trim();
+    const tons = parseFloat(document.getElementById('ib-tons').value);
+    if(!op) return this.toast('Please enter operator name','err');
+    if(isNaN(tons)||tons<=0) return this.toast('Please enter valid tonnage','err');
+
+    const entry = {
+      id: Date.now(), type:'inbound', date:this.todayStr(), time:this.fmtTime(),
+      operator:op, mt:tons,
+      notes:document.getElementById('ib-notes').value.trim(),
+      photo:this.getPhoto('ib-photo')
+    };
+    this.saveEntry(entry);
+    this.syncToSheets('Inbound',[entry.date,entry.time,entry.operator,entry.mt,entry.notes,entry.photo?'[photo]':'',new Date().toISOString()]);
+
+    document.getElementById('ib-operator').value='';
+    document.getElementById('ib-tons').value='';
+    document.getElementById('ib-notes').value='';
+    this.clearPhoto('ib-photo','ib-prev','ib-clear');
+    this.toast('Inbound recorded: '+tons.toFixed(2)+' MT');
+    this.postSubmit();
+  },
+
+  // ── ADJUST INBOUND ──────────────────────────────────────────────
+  populateAdjSelector() {
+    const sel = document.getElementById('ib-adj-sel');
+    const today = this.todayStr();
+    const ibs = this.data.entries.filter(e=>e.type==='inbound'&&e.date===today);
+    sel.innerHTML = '<option value="">— Select an entry —</option>';
+    [...ibs].reverse().forEach(e => {
+      const opt = document.createElement('option');
+      opt.value = e.id;
+      opt.textContent = e.time+' — '+e.mt.toFixed(3)+' MT ('+e.operator+')';
+      sel.appendChild(opt);
+    });
+  },
+
+  adjustInbound() {
+    const id = parseInt(document.getElementById('ib-adj-sel').value);
+    const newTons = parseFloat(document.getElementById('ib-adj-tons').value);
+    if(!id) return this.toast('Please select an entry','err');
+    if(isNaN(newTons)||newTons<=0) return this.toast('Please enter corrected tonnage','err');
+    const idx = this.data.entries.findIndex(e=>e.id===id);
+    if(idx===-1) return this.toast('Entry not found','err');
+    const old = this.data.entries[idx].mt;
+    this.data.entries[idx].mt = newTons;
+    this.data.entries[idx].adjusted = true;
+    localStorage.setItem('sl_data', JSON.stringify(this.data));
+    document.getElementById('ib-adj-tons').value='';
+    this.toast('Corrected: '+old.toFixed(3)+' → '+newTons.toFixed(3)+' MT');
+    this.postSubmit();
+  },
+
+  // ── LIQUID SUGAR ────────────────────────────────────────────────
+  calcLiquidSugar() {
+    const brix = parseFloat(document.getElementById('ls-brix').value)||0;
+    const wlbs = parseFloat(document.getElementById('ls-weight').value)||0;
+    if(brix>0&&wlbs>0){
+      const mt = wlbs/2204.623;
+      const solids = mt*(brix/100);
+      document.getElementById('ls-mt').textContent = mt.toFixed(4);
+      document.getElementById('ls-solids').textContent = solids.toFixed(4);
+      document.getElementById('ls-water').textContent = (mt-solids).toFixed(4);
+      document.getElementById('ls-calc-box').style.display='block';
+      document.getElementById('ls-calc-row').style.display='flex';
+    } else {
+      document.getElementById('ls-calc-box').style.display='none';
+      document.getElementById('ls-calc-row').style.display='none';
+    }
+  },
+
+  submitLiquid() {
+    const client=document.getElementById('ls-client').value.trim();
+    const po=document.getElementById('ls-po').value.trim();
+    const brix=parseFloat(document.getElementById('ls-brix').value);
+    const wlbs=parseFloat(document.getElementById('ls-weight').value);
+    if(!client) return this.toast('Please enter client name','err');
+    if(isNaN(brix)||brix<=0) return this.toast('Please enter Brix value','err');
+    if(isNaN(wlbs)||wlbs<=0) return this.toast('Please enter weight','err');
+    const mt=wlbs/2204.623;
+    const solids=mt*(brix/100);
+    const entry={id:Date.now(),type:'liquid',date:this.todayStr(),time:this.fmtTime(),
+      client,po,brix,weightLbs:wlbs,mt:parseFloat(mt.toFixed(5)),solidsMt:parseFloat(solids.toFixed(5)),
+      photoBL:this.getPhoto('ls-bl'),photoCOA:this.getPhoto('ls-coa')};
+    this.saveEntry(entry);
+    this.syncToSheets('LiquidSugar',[entry.date,entry.time,entry.client,entry.po,entry.brix,entry.weightLbs,
+      entry.mt.toFixed(4),entry.solidsMt.toFixed(4),entry.photoBL?'[BL photo]':'',entry.photoCOA?'[COA photo]':'',new Date().toISOString()]);
+    ['ls-client','ls-po','ls-brix','ls-weight'].forEach(id=>document.getElementById(id).value='');
+    this.clearPhoto('ls-bl','ls-bl-prev','ls-bl-clear');
+    this.clearPhoto('ls-coa','ls-coa-prev','ls-coa-clear');
+    document.getElementById('ls-calc-box').style.display='none';
+    document.getElementById('ls-calc-row').style.display='none';
+    this.toast('Liquid sugar: '+mt.toFixed(3)+' MT recorded');
+    this.postSubmit();
+  },
+
+  // ── TRUCK ───────────────────────────────────────────────────────
+  submitTruck() {
+    const client=document.getElementById('tk-client').value.trim();
+    const po=document.getElementById('tk-po').value.trim();
+    const mt=parseFloat(document.getElementById('tk-mt').value);
+    if(!client) return this.toast('Please enter client name','err');
+    if(isNaN(mt)||mt<=0) return this.toast('Please enter valid weight','err');
+    const entry={id:Date.now(),type:'truck',date:this.todayStr(),time:this.fmtTime(),
+      client,po,mt,photoScale:this.getPhoto('tk-scale'),photoCOA:this.getPhoto('tk-coa'),photoBL:this.getPhoto('tk-bl')};
+    this.saveEntry(entry);
+    this.syncToSheets('TruckOut',[entry.date,entry.time,entry.client,entry.po,entry.mt,
+      entry.photoScale?'[Scale]':'',entry.photoCOA?'[COA]':'',entry.photoBL?'[BL]':'',new Date().toISOString()]);
+    ['tk-client','tk-po','tk-mt'].forEach(id=>document.getElementById(id).value='');
+    this.clearPhoto('tk-scale','tk-scale-prev','tk-scale-clear');
+    this.clearPhoto('tk-coa','tk-coa-prev','tk-coa-clear');
+    this.clearPhoto('tk-bl','tk-bl-prev','tk-bl-clear');
+    this.toast('Truck shipment: '+mt.toFixed(2)+' MT recorded');
+    this.postSubmit();
+  },
+
+  // ── RAIL ────────────────────────────────────────────────────────
+  submitRail() {
+    const client=document.getElementById('rl-client').value.trim();
+    const mt=parseFloat(document.getElementById('rl-mt').value);
+    if(!client) return this.toast('Please enter client name','err');
+    if(isNaN(mt)||mt<=0) return this.toast('Please enter valid weight','err');
+    const entry={id:Date.now(),type:'rail',date:this.todayStr(),time:this.fmtTime(),
+      client,mt,photoScale:this.getPhoto('rl-scale'),photoBL:this.getPhoto('rl-bl')};
+    this.saveEntry(entry);
+    this.syncToSheets('RailOut',[entry.date,entry.time,entry.client,entry.mt,
+      entry.photoScale?'[Scale]':'',entry.photoBL?'[BL]':'',new Date().toISOString()]);
+    ['rl-client','rl-mt'].forEach(id=>document.getElementById(id).value='');
+    this.clearPhoto('rl-scale','rl-scale-prev','rl-scale-clear');
+    this.clearPhoto('rl-bl','rl-bl-prev','rl-bl-clear');
+    this.toast('Rail shipment: '+mt.toFixed(2)+' MT recorded');
+    this.postSubmit();
+  },
+
+  // ── MOLASSES ────────────────────────────────────────────────────
+  submitMolasses() {
+    const mode=document.querySelector('input[name="ml-mode"]:checked').value;
+    const client=document.getElementById('ml-client').value.trim();
+    const po=document.getElementById('ml-po').value.trim();
+    const mt=parseFloat(document.getElementById('ml-mt').value);
+    if(!client) return this.toast('Please enter client name','err');
+    if(isNaN(mt)||mt<=0) return this.toast('Please enter valid weight','err');
+    const entry={id:Date.now(),type:'molasses',date:this.todayStr(),time:this.fmtTime(),
+      mode,client,po,mt,photoScale:this.getPhoto('ml-scale'),photoBL:this.getPhoto('ml-bl')};
+    this.saveEntry(entry);
+    this.syncToSheets('Molasses',[entry.date,entry.time,entry.mode,entry.client,entry.po,entry.mt,
+      entry.photoScale?'[Scale]':'',entry.photoBL?'[BL]':'',new Date().toISOString()]);
+    ['ml-client','ml-po','ml-mt'].forEach(id=>document.getElementById(id).value='');
+    this.clearPhoto('ml-scale','ml-scale-prev','ml-scale-clear');
+    this.clearPhoto('ml-bl','ml-bl-prev','ml-bl-clear');
+    this.toast('Molasses: '+mt.toFixed(2)+' MT via '+mode);
+    this.postSubmit();
+  },
+
+  // ── DATA ────────────────────────────────────────────────────────
+  saveEntry(entry) {
+    this.data.entries.push(entry);
+    if(this.data.entries.length>2000) this.data.entries=this.data.entries.slice(-2000);
+    localStorage.setItem('sl_data',JSON.stringify(this.data));
+  },
+
+  getDayTotals(ds) {
+    const es=this.data.entries.filter(e=>e.date===ds);
+    const inbound=es.filter(e=>e.type==='inbound').reduce((a,e)=>a+e.mt,0);
+    const liquid=es.filter(e=>e.type==='liquid').reduce((a,e)=>a+e.mt,0);
+    const truck=es.filter(e=>e.type==='truck').reduce((a,e)=>a+e.mt,0);
+    const rail=es.filter(e=>e.type==='rail').reduce((a,e)=>a+e.mt,0);
+    const molasses=es.filter(e=>e.type==='molasses').reduce((a,e)=>a+e.mt,0);
+    const outbound=liquid+truck+rail+molasses;
+    const net=inbound-outbound;
+    const pct=inbound>0?net/inbound*100:0;
+    return {inbound,liquid,truck,rail,molasses,outbound,net,pct};
+  },
+
+  postSubmit() {
+    this.updateDashboard();
+    this.renderHistories();
+    this.populateAdjSelector();
+    this.checkAlerts();
+    this.syncDailySummary();
+  },
+
+  // ── DASHBOARD ───────────────────────────────────────────────────
+  updateDashboard() {
+    const t=this.getDayTotals(this.todayStr());
+    document.getElementById('d-inbound').textContent=t.inbound.toFixed(2);
+    document.getElementById('d-outbound').textContent=t.outbound.toFixed(2);
+    document.getElementById('d-net').textContent=t.net.toFixed(2);
+    document.getElementById('d-pct').textContent=t.pct.toFixed(1)+'%';
+    const nc=document.getElementById('net-card'), pc=document.getElementById('pct-card');
+    nc.className='stat-c'+(t.pct>5?' rd':' or');
+    pc.className='stat-c'+(t.pct>3?' rd':' or');
+    const maxOut=Math.max(t.outbound,0.001);
+    [{id:'liquid',v:t.liquid},{id:'truck',v:t.truck},{id:'rail',v:t.rail},{id:'mol',v:t.molasses}].forEach(b=>{
+      document.getElementById('bar-'+b.id).style.width=Math.min(b.v/maxOut*100,100).toFixed(1)+'%';
+      document.getElementById('bv-'+b.id).textContent=b.v.toFixed(2);
+    });
+    this.renderThreeDayChart();
+    this.renderAlerts();
+  },
+
+  renderThreeDayChart() {
+    const cont=document.getElementById('three-day-chart');
+    const today=new Date(); let html='';
+    for(let i=2;i>=0;i--){
+      const d=new Date(today); d.setDate(d.getDate()-i);
+      const ds=d.toISOString().split('T')[0];
+      const t=this.getDayTotals(ds);
+      const lbl=i===0?'Today':i===1?'Yesterday':d.toLocaleDateString('en-US',{weekday:'short'});
+      const danger=t.pct>3;
+      html+='<div class="bar-row"><span class="bar-lbl" style="font-size:10px;width:65px">'+lbl+'</span>'+
+        '<div class="bar-track"><div class="bar-fill'+(danger?' danger':'')+'" style="width:'+Math.min(t.pct*8,100).toFixed(0)+'%"></div></div>'+
+        '<span class="bar-val" style="color:'+(danger?'var(--red)':'var(--acc)')+'">'+t.pct.toFixed(1)+'%</span>'+
+        '<span style="font-size:10px;color:var(--mut);width:70px;text-align:right">'+t.inbound.toFixed(1)+'→'+t.outbound.toFixed(1)+'</span>'+
+        '</div>';
+    }
+    cont.innerHTML=html||'<div class="empty"><p>No data yet</p></div>';
+  },
+
+  renderAlerts() {
+    const cont=document.getElementById('alert-container');
+    const {totalIn,totalOut,days}=this.getThreeDayTotals();
+    const pct=totalIn>0?(totalIn-totalOut)/totalIn*100:0;
+    if(days>=1&&pct>this.cfg.threshold){
+      cont.innerHTML='<div class="alert-banner"><span class="ai">&#128680;</span>'+
+        '<div><strong>Weight Loss Alert</strong><br>3-day average loss: <strong>'+pct.toFixed(1)+'%</strong> (threshold '+this.cfg.threshold+'%)'+
+        '<br>Alert sent to '+this.cfg.alertEmail+'</div></div>';
+    } else { cont.innerHTML=''; }
+  },
+
+  getThreeDayTotals() {
+    const today=new Date(); let totalIn=0,totalOut=0,days=0;
+    for(let i=0;i<3;i++){
+      const d=new Date(today); d.setDate(d.getDate()-i);
+      const t=this.getDayTotals(d.toISOString().split('T')[0]);
+      if(t.inbound>0){ totalIn+=t.inbound; totalOut+=t.outbound; days++; }
+    }
+    return {totalIn,totalOut,days};
+  },
+
+  // ── HISTORIES ───────────────────────────────────────────────────
+  renderHistories() {
+    const today=this.todayStr();
+    const all=this.data.entries.filter(e=>e.date===today);
+    document.getElementById('today-count').textContent=all.length;
+    document.getElementById('today-history').innerHTML=all.length?
+      [...all].reverse().slice(0,15).map(e=>this.entryHtml(e)).join(''):
+      '<div class="empty"><div class="ei">&#128203;</div><p>No entries today</p></div>';
+
+    const renderGroup=(type,id,badgeId,emptyIcon,emptyMsg,color,icon,buildSub)=>{
+      const gr=all.filter(e=>e.type===type);
+      document.getElementById(badgeId).textContent=gr.length+' loads';
+      document.getElementById(id).innerHTML=gr.length?[...gr].reverse().map(e=>
+        '<div class="hist-item"><div class="hist-dot" style="background:'+color+'">'+icon+'</div>'+
+        '<div class="hist-info"><div class="hist-val">'+e.mt.toFixed(3)+' MT</div><div class="hist-sub">'+buildSub(e)+'</div></div>'+
+        '<span class="hist-time">'+e.time+'</span></div>').join(''):
+        '<div class="empty"><div class="ei">'+emptyIcon+'</div><p>'+emptyMsg+'</p></div>';
+    };
+
+    renderGroup('inbound','ib-history','ib-count','&#11015;','No inbound today','#7a9a2e','&#11015;',e=>'By '+e.operator+(e.notes?' · '+e.notes:'')+(e.adjusted?' ✎ adjusted':''));
+    renderGroup('liquid','ls-history','ls-count','&#127855;','No liquid sugar today','#1565c0','&#127855;',e=>e.client+' · PO: '+e.po+' · '+e.brix+'°Bx');
+    renderGroup('truck','tk-history','tk-count','&#128665;','No truck shipments','#e65100','&#128665;',e=>e.client+' · PO: '+e.po);
+    renderGroup('rail','rl-history','rl-count','&#128642;','No rail shipments','#6a1b9a','&#128642;',e=>e.client);
+    renderGroup('molasses','ml-history','ml-count','&#129749;','No molasses today','#c62828','&#129749;',e=>e.client+' · '+e.mode+(e.po?' · PO: '+e.po:''));
+  },
+
+  entryHtml(e) {
+    const icons={inbound:'&#11015;',liquid:'&#127855;',truck:'&#128665;',rail:'&#128642;',molasses:'&#129749;'};
+    const colors={inbound:'#7a9a2e',liquid:'#1565c0',truck:'#e65100',rail:'#6a1b9a',molasses:'#c62828'};
+    const labels={inbound:'Inbound',liquid:'Liquid',truck:'Truck',rail:'Rail',molasses:'Molasses'};
+    const sub=e.type==='inbound'?'By '+e.operator:(e.client||'')+(e.mode?' via '+e.mode:'');
+    return '<div class="hist-item"><div class="hist-dot" style="background:'+colors[e.type]+'">'+icons[e.type]+'</div>'+
+      '<div class="hist-info"><div class="hist-val">'+e.mt.toFixed(3)+' MT <span class="badge" style="background:#f0f0f0;color:#555">'+labels[e.type]+'</span></div>'+
+      '<div class="hist-sub">'+sub+'</div></div><span class="hist-time">'+e.time+'</span></div>';
+  },
+
+  // ── ALERTS ──────────────────────────────────────────────────────
+  checkAlerts() {
+    const {totalIn,totalOut,days}=this.getThreeDayTotals();
+    if(days<1||totalIn===0) return;
+    const pct=(totalIn-totalOut)/totalIn*100;
+    if(pct>this.cfg.threshold) this.sendAlert(pct,totalIn,totalOut);
+    this.renderAlerts();
+  },
+
+  async sendAlert(pct,inbound,outbound) {
+    const key='sl_alerted_'+this.todayStr();
+    if(localStorage.getItem(key)) return;
+    localStorage.setItem(key,'1');
+    const params={
+      to_email:this.cfg.alertEmail,
+      date:new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'}),
+      loss_pct:pct.toFixed(2),
+      inbound:inbound.toFixed(2),
+      outbound:outbound.toFixed(2),
+      net:(inbound-outbound).toFixed(2),
+      threshold:this.cfg.threshold
+    };
+    if(this.cfg.ejsKey&&this.cfg.ejsSvc&&this.cfg.ejsTmpl&&typeof emailjs!=='undefined'){
+      try { await emailjs.send(this.cfg.ejsSvc,this.cfg.ejsTmpl,params); console.log('Alert sent'); }
+      catch(err){ console.warn('EmailJS failed',err); this.fallbackEmail(params); }
+    } else { this.fallbackEmail(params); }
+  },
+
+  fallbackEmail(p) {
+    const sub=encodeURIComponent('[SweetLife Buffalo] Weight Loss Alert — '+p.loss_pct+'%');
+    const body=encodeURIComponent(
+      'WEIGHT LOSS ALERT — Buffalo Refinery\n\n'+
+      '3-Day Average Weight Loss: '+p.loss_pct+'% (threshold: '+p.threshold+'%)\n\n'+
+      'Total Inbound (3 days): '+p.inbound+' MT\n'+
+      'Total Outbound (3 days): '+p.outbound+' MT\n'+
+      'Net Loss: '+p.net+' MT\n\n'+
+      'Date: '+p.date+'\n\nGenerated automatically by SweetLife Buffalo Inventory App'
+    );
+    window.open('mailto:'+p.to_email+'?subject='+sub+'&body='+body);
+  },
+
+  // ── GOOGLE SHEETS ────────────────────────────────────────────────
+  async initGoogle() {
+    try {
+      await new Promise((res,rej)=>gapi.load('client',{callback:res,onerror:rej}));
+      await gapi.client.init({apiKey:this.cfg.apiKey,discoveryDocs:['https://sheets.googleapis.com/$discovery/rest?version=v4']});
+      this.tokenClient=google.accounts.oauth2.initTokenClient({
+        client_id:this.cfg.clientId,
+        scope:'https://www.googleapis.com/auth/spreadsheets',
+        callback:(r)=>{if(!r.error){this.accessToken=r.access_token;this.setConn(true);}}
+      });
+      this.tokenClient.requestAccessToken({prompt:''});
+    } catch(e){ console.warn('Google API init failed',e); this.setConn(false); }
+  },
+
+  setConn(ok) {
+    this.sheetsReady=ok;
+    document.getElementById('conn-dot').className='conn-dot'+(ok?' ok':' err');
+    document.getElementById('conn-lbl').textContent=ok?'Synced':'Offline';
+  },
+
+  async syncToSheets(tab,row) {
+    if(!this.sheetsReady||!this.cfg.sheetId) return;
+    try {
+      await gapi.client.sheets.spreadsheets.values.append({
+        spreadsheetId:this.cfg.sheetId, range:tab+'!A1',
+        valueInputOption:'USER_ENTERED', resource:{values:[row]}
+      });
+    } catch(e){
+      console.warn('Sheets sync failed',e);
+      if(e.status===401&&this.tokenClient) this.tokenClient.requestAccessToken({prompt:''});
+    }
+  },
+
+  syncDailySummary() {
+    const t=this.getDayTotals(this.todayStr());
+    const {totalIn,totalOut}=this.getThreeDayTotals();
+    const avg3pct=totalIn>0?(totalIn-totalOut)/totalIn*100:0;
+    this.syncToSheets('DailySummary',[
+      this.todayStr(),t.inbound.toFixed(4),t.liquid.toFixed(4),t.truck.toFixed(4),
+      t.rail.toFixed(4),t.molasses.toFixed(4),t.outbound.toFixed(4),
+      t.net.toFixed(4),t.pct.toFixed(2),avg3pct.toFixed(2),new Date().toISOString()
+    ]);
+  },
+
+  // ── CONFIG ──────────────────────────────────────────────────────
+  openConfig() {
+    document.getElementById('cfg-client-id').value=this.cfg.clientId||'';
+    document.getElementById('cfg-api-key').value=this.cfg.apiKey||'';
+    document.getElementById('cfg-sheet-id').value=this.cfg.sheetId||'';
+    document.getElementById('cfg-ejs-key').value=this.cfg.ejsKey||'';
+    document.getElementById('cfg-ejs-svc').value=this.cfg.ejsSvc||'';
+    document.getElementById('cfg-ejs-tmpl').value=this.cfg.ejsTmpl||'';
+    document.getElementById('config-modal').classList.add('open');
+  },
+
+  closeConfig() { document.getElementById('config-modal').classList.remove('open'); },
+
+  saveConfig() {
+    this.cfg.clientId=document.getElementById('cfg-client-id').value.trim();
+    this.cfg.apiKey=document.getElementById('cfg-api-key').value.trim();
+    this.cfg.sheetId=document.getElementById('cfg-sheet-id').value.trim();
+    this.cfg.ejsKey=document.getElementById('cfg-ejs-key').value.trim();
+    this.cfg.ejsSvc=document.getElementById('cfg-ejs-svc').value.trim();
+    this.cfg.ejsTmpl=document.getElementById('cfg-ejs-tmpl').value.trim();
+    localStorage.setItem('sl_cfg',JSON.stringify(this.cfg));
+    if(this.cfg.ejsKey&&typeof emailjs!=='undefined') emailjs.init(this.cfg.ejsKey);
+    if(this.cfg.clientId&&this.cfg.apiKey) this.initGoogle();
+    this.closeConfig();
+    this.toast('Configuration saved!');
+  },
+
+  clearAllData() {
+    if(!confirm('Delete ALL local data? This cannot be undone.')) return;
+    this.data={entries:[]};
+    localStorage.removeItem('sl_data');
+    this.closeConfig();
+    this.updateDashboard();
+    this.renderHistories();
+    this.toast('Local data cleared');
+  },
+
+  // ── TOAST ───────────────────────────────────────────────────────
+  toast(msg, type) {
+    const t=document.getElementById('toast');
+    t.textContent=msg;
+    t.className='toast show';
+    t.style.background=type==='err'?'var(--red)':'#1a1a1a';
+    clearTimeout(this._tt);
+    this._tt=setTimeout(()=>t.classList.remove('show'),3000);
+  }
+};
+
+document.getElementById('config-modal').addEventListener('click',function(e){if(e.target===this)APP.closeConfig();});
+window.addEventListener('DOMContentLoaded',()=>APP.init());
+</script>
+</body>
+</html>
