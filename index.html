@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>SweetLife Buffalo — Daily Inventory</title>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-<script src="https://apis.google.com/js/api.js" async defer></script>
+<script src="https://apis.google.com/js/api.js" onload="window._gapiReady=true;window._checkGoogleReady&&window._checkGoogleReady()"></script>
+<script src="https://accounts.google.com/gsi/client" onload="window._gsiReady=true;window._checkGoogleReady&&window._checkGoogleReady()"></script>
 <script src="https://cdn.emailjs.com/dist/email.min.js"></script>
 <style>
 :root{--pri:#1a1a1a;--acc:#7a9a2e;--adk:#5a7422;--bg:#ffffff;--card:#fff;--bdr:#e0e0d8;--txt:#2d2d2d;--mut:#888;--red:#e53935;--grn:#43a047;--org:#fb8c00;--nav:64px;--hdr:68px}
@@ -443,6 +443,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       </div>
     </div>
     <button class="btn btn-pri" onclick="APP.saveConfig()">&#128190; Save Configuration</button>
+    <button class="btn btn-sec" style="margin-top:8px;background:#1a73e8;color:#fff" onclick="APP.connectGoogle()">&#128279; Connect Google Account</button>
     <button class="btn btn-sec" style="margin-top:8px" onclick="APP.closeConfig()">Cancel</button>
     <button class="btn btn-danger" style="margin-top:8px" onclick="APP.clearAllData()">&#128465; Clear All Local Data</button>
   </div>
@@ -483,10 +484,12 @@ const APP = {
     this.renderHistories();
     this.populateAdjSelector();
 
-    if(this.cfg.clientId && this.cfg.apiKey) {
-      window.gapiReady = () => this.initGoogle();
-      if(typeof gapi !== 'undefined') this.initGoogle();
-    }
+    window._checkGoogleReady = () => {
+      if(window._gapiReady && window._gsiReady && this.cfg.clientId && this.cfg.apiKey) {
+        this.initGoogle();
+      }
+    };
+    if(this.cfg.clientId && this.cfg.apiKey) window._checkGoogleReady();
     if(this.cfg.ejsKey && typeof emailjs !== 'undefined') emailjs.init(this.cfg.ejsKey);
   },
 
@@ -872,15 +875,41 @@ const APP = {
   // ── GOOGLE SHEETS ────────────────────────────────────────────────
   async initGoogle() {
     try {
+      if(typeof gapi === 'undefined' || typeof google === 'undefined') {
+        console.warn('Google scripts not loaded yet'); return;
+      }
       await new Promise((res,rej)=>gapi.load('client',{callback:res,onerror:rej}));
-      await gapi.client.init({apiKey:this.cfg.apiKey,discoveryDocs:['https://sheets.googleapis.com/$discovery/rest?version=v4']});
+      await gapi.client.init({
+        apiKey:this.cfg.apiKey,
+        discoveryDocs:['https://sheets.googleapis.com/$discovery/rest?version=v4']
+      });
       this.tokenClient=google.accounts.oauth2.initTokenClient({
         client_id:this.cfg.clientId,
         scope:'https://www.googleapis.com/auth/spreadsheets',
-        callback:(r)=>{if(!r.error){this.accessToken=r.access_token;this.setConn(true);}}
+        callback:(r)=>{
+          if(r.error){ console.warn('OAuth error',r); this.setConn(false); return; }
+          this.accessToken=r.access_token;
+          this.setConn(true);
+          this.toast('✅ Connected to Google Sheets!');
+        }
       });
+      // Try silent sign-in first
       this.tokenClient.requestAccessToken({prompt:''});
     } catch(e){ console.warn('Google API init failed',e); this.setConn(false); }
+  },
+
+  connectGoogle() {
+    if(!this.cfg.clientId || !this.cfg.apiKey) {
+      this.toast('Save your Client ID and API Key first','err'); return;
+    }
+    if(this.tokenClient) {
+      // Force the sign-in popup
+      this.tokenClient.requestAccessToken({prompt:'consent'});
+    } else {
+      this.initGoogle().then(()=>{
+        setTimeout(()=>{ if(this.tokenClient) this.tokenClient.requestAccessToken({prompt:'consent'}); },1000);
+      });
+    }
   },
 
   setConn(ok) {
