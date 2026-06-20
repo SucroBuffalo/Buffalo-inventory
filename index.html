@@ -399,14 +399,67 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   </div>
 </div>
 
+<!-- PROCESSING -->
+<div class="screen" id="screen-processing">
+  <div class="sec-hdr">
+    <span class="sec-title">&#9881; Processing Inventory</span>
+    <span class="date-chip" id="proc-date"></span>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat-c ac" style="grid-column:span 2">
+      <div class="sv" id="proc-stock">0.000</div>
+      <div class="sl">&#127981; Raw Sugar Currently On Floor (MT)</div>
+    </div>
+    <div class="stat-c"><div class="sv" id="proc-in">0.00</div><div class="sl">&#11015; Total Received</div></div>
+    <div class="stat-c"><div class="sv" id="proc-out">0.00</div><div class="sl">&#11014; Total Shipped</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr"><span class="card-title">&#128200; Outbound Allocation</span></div>
+    <div class="bar-row"><span class="bar-lbl">Liquid</span><div class="bar-track"><div class="bar-fill" id="proc-bar-liquid" style="width:0%"></div></div><span class="bar-val" id="proc-bv-liquid">0.00</span></div>
+    <div class="bar-row"><span class="bar-lbl">Truck</span><div class="bar-track"><div class="bar-fill" id="proc-bar-truck" style="width:0%"></div></div><span class="bar-val" id="proc-bv-truck">0.00</span></div>
+    <div class="bar-row"><span class="bar-lbl">Rail</span><div class="bar-track"><div class="bar-fill" id="proc-bar-rail" style="width:0%"></div></div><span class="bar-val" id="proc-bv-rail">0.00</span></div>
+    <div class="bar-row"><span class="bar-lbl">Molasses</span><div class="bar-track"><div class="bar-fill" id="proc-bar-mol" style="width:0%"></div></div><span class="bar-val" id="proc-bv-mol">0.00</span></div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr"><span class="card-title">&#128336; Inbound Load History</span><span class="badge b-gr" id="proc-load-count">0 loads</span></div>
+    <div id="proc-inbound-list"><div class="empty"><div class="ei">&#11015;</div><p>No inbound loads yet</p></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr"><span class="card-title">&#11014; Outbound History</span><span class="badge b-or" id="proc-out-count">0 shipments</span></div>
+    <div id="proc-outbound-list"><div class="empty"><div class="ei">&#11014;</div><p>No outbound shipments yet</p></div></div>
+  </div>
+</div>
+
+<!-- ADMIN LINKS -->
+<div class="screen" id="screen-links">
+  <div class="sec-hdr">
+    <span class="sec-title">&#128279; Operator Links</span>
+  </div>
+  <div class="card">
+    <div class="card-title" style="margin-bottom:14px">&#128101; Share these links with your team</div>
+    <p style="font-size:12px;color:var(--mut);margin-bottom:14px">Each link opens a focused view for that operator only — no access to other screens.</p>
+    <div id="links-list"></div>
+  </div>
+  <div class="card">
+    <div class="card-title" style="margin-bottom:12px">&#128272; Admin Link</div>
+    <div id="admin-link-box"></div>
+  </div>
+</div>
+
 <!-- BOTTOM NAV -->
 <nav class="bot-nav">
-  <button class="nav-it active" data-screen="dashboard"><span class="ni">&#128202;</span>Dashboard</button>
+  <button class="nav-it active" data-screen="dashboard"><span class="ni">&#128202;</span>Dash</button>
+  <button class="nav-it" data-screen="processing"><span class="ni">&#9881;</span>Process</button>
   <button class="nav-it" data-screen="inbound"><span class="ni">&#11015;</span>Inbound</button>
   <button class="nav-it" data-screen="liquid"><span class="ni">&#127855;</span>Liquid</button>
   <button class="nav-it" data-screen="truck"><span class="ni">&#128665;</span>Truck</button>
   <button class="nav-it" data-screen="rail"><span class="ni">&#128642;</span>Rail</button>
   <button class="nav-it" data-screen="molasses"><span class="ni">&#129749;</span>Molasses</button>
+  <button class="nav-it" data-screen="links"><span class="ni">&#128279;</span>Links</button>
 </nav>
 
 <!-- CONFIG MODAL -->
@@ -468,12 +521,18 @@ const APP = {
   data: { entries:[] },
   tokenClient: null,
   sheetsReady: false,
+  viewMode: 'admin',
 
   init() {
     const sc = localStorage.getItem('sl_cfg');
     if(sc) try { this.cfg = {...this.cfg,...JSON.parse(sc)}; } catch(e){}
     const sd = localStorage.getItem('sl_data');
     if(sd) try { this.data = JSON.parse(sd); } catch(e){}
+
+    // Detect view mode from URL
+    const params = new URLSearchParams(window.location.search);
+    this.viewMode = params.get('view') || 'admin';
+    this.applyViewMode();
 
     document.querySelectorAll('.nav-it').forEach(b => {
       b.addEventListener('click', () => this.showScreen(b.dataset.screen));
@@ -482,6 +541,7 @@ const APP = {
     this.updateDates();
     this.updateDashboard();
     this.renderHistories();
+    this.renderProcessing();
     this.populateAdjSelector();
 
     window._checkGoogleReady = () => {
@@ -493,6 +553,41 @@ const APP = {
     if(this.cfg.ejsKey && typeof emailjs !== 'undefined') emailjs.init(this.cfg.ejsKey);
   },
 
+  applyViewMode() {
+    const vm = this.viewMode;
+    const isAdmin = vm === 'admin';
+    const nav = document.querySelector('.bot-nav');
+
+    if(isAdmin) {
+      // Show all nav items
+      nav.style.display = 'flex';
+      this.showScreen('dashboard');
+      return;
+    }
+
+    // Operator view — hide nav, show only their screen
+    nav.style.display = 'none';
+    document.body.style.paddingBottom = '0';
+
+    // Update header subtitle
+    const labels = {inbound:'Inbound Operator',liquid:'Liquid Sugar Operator',truck:'Truck Outbound Operator',rail:'Rail Outbound Operator',molasses:'Molasses Operator'};
+    const hdrDate = document.getElementById('hdr-date');
+    if(hdrDate && labels[vm]) hdrDate.textContent = labels[vm];
+
+    // Hide corner logos top-right and bottom-left (keep tl and br)
+    const cr = document.getElementById('cl-tr');
+    const cb = document.getElementById('cl-bl');
+    if(cr) cr.style.display='none';
+    if(cb) cb.style.display='none';
+
+    // Adjust corner logo bottom position since no nav
+    const br = document.getElementById('cl-br');
+    const bl = document.getElementById('cl-bl');
+    if(br) br.style.bottom='8px';
+
+    this.showScreen(vm);
+  },
+
   showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.nav-it').forEach(n => n.classList.remove('active'));
@@ -501,6 +596,8 @@ const APP = {
     if(s) s.classList.add('active');
     if(n) n.classList.add('active');
     if(id==='dashboard') this.updateDashboard();
+    if(id==='processing') this.renderProcessing();
+    if(id==='links') this.renderLinks();
     if(id==='inbound') this.populateAdjSelector();
   },
 
@@ -732,6 +829,7 @@ const APP = {
   postSubmit() {
     this.updateDashboard();
     this.renderHistories();
+    this.renderProcessing();
     this.populateAdjSelector();
     this.checkAlerts();
     this.syncDailySummary();
@@ -829,6 +927,101 @@ const APP = {
     return '<div class="hist-item"><div class="hist-dot" style="background:'+colors[e.type]+'">'+icons[e.type]+'</div>'+
       '<div class="hist-info"><div class="hist-val">'+e.mt.toFixed(3)+' MT <span class="badge" style="background:#f0f0f0;color:#555">'+labels[e.type]+'</span></div>'+
       '<div class="hist-sub">'+sub+'</div></div><span class="hist-time">'+e.time+'</span></div>';
+  },
+
+  // ── PROCESSING ──────────────────────────────────────────────────
+  renderProcessing() {
+    const all = this.data.entries;
+    const inbounds = all.filter(e=>e.type==='inbound');
+    const outbounds = all.filter(e=>e.type!=='inbound');
+    const totalIn = inbounds.reduce((a,e)=>a+e.mt,0);
+    const liquid = outbounds.filter(e=>e.type==='liquid').reduce((a,e)=>a+e.mt,0);
+    const truck = outbounds.filter(e=>e.type==='truck').reduce((a,e)=>a+e.mt,0);
+    const rail = outbounds.filter(e=>e.type==='rail').reduce((a,e)=>a+e.mt,0);
+    const molasses = outbounds.filter(e=>e.type==='molasses').reduce((a,e)=>a+e.mt,0);
+    const totalOut = liquid+truck+rail+molasses;
+    const onFloor = Math.max(totalIn-totalOut,0);
+
+    document.getElementById('proc-stock').textContent = onFloor.toFixed(3);
+    document.getElementById('proc-in').textContent = totalIn.toFixed(2);
+    document.getElementById('proc-out').textContent = totalOut.toFixed(2);
+
+    // color stock card
+    const stockCard = document.getElementById('proc-stock').parentElement;
+    stockCard.className = 'stat-c'+(onFloor<5?' rd':onFloor<20?' or':' ac')+' stat-c';
+    stockCard.style.gridColumn='span 2';
+
+    // allocation bars
+    const maxOut = Math.max(totalOut,0.001);
+    [{id:'liquid',v:liquid},{id:'truck',v:truck},{id:'rail',v:rail},{id:'mol',v:molasses}].forEach(b=>{
+      document.getElementById('proc-bar-'+b.id).style.width=Math.min(b.v/maxOut*100,100).toFixed(1)+'%';
+      document.getElementById('proc-bv-'+b.id).textContent=b.v.toFixed(2);
+    });
+
+    // Inbound list
+    const ibEl = document.getElementById('proc-inbound-list');
+    document.getElementById('proc-load-count').textContent=inbounds.length+' loads';
+    ibEl.innerHTML = inbounds.length ? [...inbounds].reverse().map(e=>`
+      <div class="hist-item">
+        <div class="hist-dot" style="background:#7a9a2e">&#11015;</div>
+        <div class="hist-info">
+          <div class="hist-val">${e.mt.toFixed(3)} MT ${e.adjusted?'<span class="badge b-or">adjusted</span>':''}</div>
+          <div class="hist-sub">${e.date} ${e.time} &nbsp;·&nbsp; ${e.operator}${e.notes?' · '+e.notes:''}</div>
+        </div>
+      </div>`).join('') : '<div class="empty"><div class="ei">&#11015;</div><p>No inbound loads yet</p></div>';
+
+    // Outbound list
+    const obEl = document.getElementById('proc-outbound-list');
+    document.getElementById('proc-out-count').textContent=outbounds.length+' shipments';
+    const typeColors={liquid:'#1565c0',truck:'#e65100',rail:'#6a1b9a',molasses:'#c62828'};
+    const typeIcons={liquid:'&#127855;',truck:'&#128665;',rail:'&#128642;',molasses:'&#129749;'};
+    const typeLabels={liquid:'Liquid Sugar',truck:'Truck',rail:'Rail',molasses:'Molasses'};
+    obEl.innerHTML = outbounds.length ? [...outbounds].reverse().map(e=>`
+      <div class="hist-item">
+        <div class="hist-dot" style="background:${typeColors[e.type]}">${typeIcons[e.type]}</div>
+        <div class="hist-info">
+          <div class="hist-val">${e.mt.toFixed(3)} MT <span class="badge" style="background:#f0f0f0;color:#555">${typeLabels[e.type]}</span></div>
+          <div class="hist-sub">${e.date} ${e.time} &nbsp;·&nbsp; ${e.client||''}</div>
+        </div>
+      </div>`).join('') : '<div class="empty"><div class="ei">&#11014;</div><p>No outbound shipments yet</p></div>';
+
+    // Update proc-date
+    const el = document.getElementById('proc-date');
+    if(el) el.textContent = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  },
+
+  // ── LINKS ───────────────────────────────────────────────────────
+  renderLinks() {
+    const base = window.location.origin + window.location.pathname;
+    const links = [
+      {view:'inbound', label:'Loader Operator', icon:'&#11015;', color:'#7a9a2e', desc:'Raw sugar inbound entry'},
+      {view:'liquid',  label:'Liquid Sugar',    icon:'&#127855;', color:'#1565c0', desc:'Liquid sugar outbound'},
+      {view:'truck',   label:'Truck Outbound',  icon:'&#128665;', color:'#e65100', desc:'Truck shipments'},
+      {view:'rail',    label:'Rail Outbound',   icon:'&#128642;', color:'#6a1b9a', desc:'Rail shipments'},
+      {view:'molasses',label:'Molasses',        icon:'&#129749;', color:'#c62828', desc:'Molasses shipments'},
+    ];
+
+    document.getElementById('links-list').innerHTML = links.map(l=>{
+      const url = base+'?view='+l.view;
+      return `<div style="border:1px solid var(--bdr);border-radius:10px;padding:12px;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <div style="width:36px;height:36px;border-radius:50%;background:${l.color};color:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">${l.icon}</div>
+          <div><div style="font-weight:700;font-size:14px">${l.label}</div><div style="font-size:11px;color:var(--mut)">${l.desc}</div></div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="text" value="${url}" readonly style="font-size:11px;padding:7px 10px;color:var(--mut);background:#f8f8f8;flex:1" onclick="this.select()">
+          <button class="btn btn-pri" style="width:auto;padding:7px 14px;font-size:12px;margin:0" onclick="navigator.clipboard.writeText('${url}');APP.toast('Link copied!')">Copy</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    const adminUrl = base+'?view=admin';
+    document.getElementById('admin-link-box').innerHTML = `
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" value="${adminUrl}" readonly style="font-size:11px;padding:7px 10px;color:var(--mut);background:#f8f8f8;flex:1" onclick="this.select()">
+        <button class="btn btn-pri" style="width:auto;padding:7px 14px;font-size:12px;margin:0" onclick="navigator.clipboard.writeText('${adminUrl}');APP.toast('Admin link copied!')">Copy</button>
+      </div>
+      <p style="font-size:11px;color:var(--mut);margin-top:8px">Full access: dashboard, processing, all tabs, configuration.</p>`;
   },
 
   // ── ALERTS ──────────────────────────────────────────────────────
