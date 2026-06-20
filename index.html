@@ -869,21 +869,6 @@ const APP = {
     fc.style.borderColor = col;
     document.getElementById('d-floor').style.color = col;
 
-    // ── Last recorded weight loss ──
-    const calcs = this.data.calculations || [];
-    const lastCalc = calcs.length ? calcs[calcs.length-1] : null;
-    const llCard = document.getElementById('last-loss-card');
-    if(lastCalc) {
-      llCard.style.display = 'block';
-      document.getElementById('d-last-loss-pct').textContent = lastCalc.lossPct.toFixed(2)+'%';
-      document.getElementById('d-last-loss-detail').textContent =
-        lastCalc.date+' · '+lastCalc.weightLoss.toFixed(3)+' MT lost of '+lastCalc.totalIn.toFixed(2)+' MT received';
-      llCard.style.borderColor = 'var(--grn)';
-      document.getElementById('d-last-loss-pct').style.color = 'var(--grn)';
-    } else {
-      llCard.style.display = 'none';
-    }
-
     // ── Today's stats ──
     const t=this.getDayTotals(this.todayStr());
     document.getElementById('d-inbound').textContent=t.inbound.toFixed(2);
