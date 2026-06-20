@@ -148,15 +148,22 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   </div>
   <div id="alert-container"></div>
 
-  <!-- Floor inventory -->
-  <div class="card" style="border:2px solid var(--acc);padding:18px;margin-bottom:14px">
-    <div style="text-align:center;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.6px">&#127981; Processing Floor — Raw Sugar On Hand</div>
-    <div style="text-align:center;font-size:48px;font-weight:900;color:var(--acc);letter-spacing:-2px;line-height:1" id="d-floor">0.000</div>
-    <div style="text-align:center;font-size:13px;color:var(--mut);margin-top:4px">Metric Tons</div>
+  <!-- Processing Floor -->
+  <div class="card" id="floor-card" style="border:2px solid var(--acc);padding:18px;margin-bottom:14px">
+    <div style="text-align:center;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.6px">&#127981; Processing Floor — Current Batch</div>
+    <div style="text-align:center;font-size:48px;font-weight:900;letter-spacing:-2px;line-height:1" id="d-floor">0.000</div>
+    <div style="text-align:center;font-size:12px;color:var(--mut);margin-top:3px">MT on floor (pending calculation)</div>
     <div style="display:flex;justify-content:center;gap:20px;margin-top:12px;padding-top:12px;border-top:1px solid var(--bdr)">
-      <div style="text-align:center"><div style="font-size:16px;font-weight:800;color:#1a1a1a" id="d-floor-in">0.00</div><div style="font-size:10px;color:var(--mut);text-transform:uppercase">&#11015; Total In</div></div>
-      <div style="text-align:center"><div style="font-size:16px;font-weight:800;color:#1a1a1a" id="d-floor-out">0.00</div><div style="font-size:10px;color:var(--mut);text-transform:uppercase">&#11014; Total Out</div></div>
+      <div style="text-align:center"><div style="font-size:16px;font-weight:800" id="d-floor-in">0.00</div><div style="font-size:10px;color:var(--mut);text-transform:uppercase">&#11015; Batch In</div></div>
+      <div style="text-align:center"><div style="font-size:16px;font-weight:800" id="d-floor-out">0.00</div><div style="font-size:10px;color:var(--mut);text-transform:uppercase">&#11014; Batch Out</div></div>
     </div>
+  </div>
+
+  <!-- Last Weight Loss Record -->
+  <div class="card" id="last-loss-card" style="display:none;border:2px solid var(--red);padding:18px;margin-bottom:14px">
+    <div style="text-align:center;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.6px">&#128201; Last Recorded Weight Loss</div>
+    <div style="text-align:center;font-size:48px;font-weight:900;color:var(--red);letter-spacing:-2px;line-height:1" id="d-last-loss-pct">0.0%</div>
+    <div style="text-align:center;font-size:12px;color:var(--mut);margin-top:3px" id="d-last-loss-detail"></div>
   </div>
 
   <!-- Today's stats -->
@@ -437,6 +444,21 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div class="bar-row"><span class="bar-lbl">Molasses</span><div class="bar-track"><div class="bar-fill" id="proc-bar-mol" style="width:0%"></div></div><span class="bar-val" id="proc-bv-mol">0.00</span></div>
   </div>
 
+  <!-- Calculate button -->
+  <div class="card" style="border:2px solid var(--acc)">
+    <div style="text-align:center;margin-bottom:10px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:4px">Ready to close this processing batch?</div>
+      <div style="font-size:12px;color:var(--mut)">Whatever remains on the floor becomes the recorded <strong>weight loss</strong> and processing resets to zero.</div>
+    </div>
+    <button class="btn btn-pri" style="font-size:15px;padding:16px" onclick="APP.calculateWeightLoss()">&#9881; Calculate &amp; Record Weight Loss</button>
+  </div>
+
+  <!-- Weight loss history -->
+  <div class="card">
+    <div class="card-hdr"><span class="card-title">&#128201; Weight Loss Records</span><span class="badge b-rd" id="proc-calc-count">0 records</span></div>
+    <div id="proc-calc-list"><div class="empty"><div class="ei">&#128201;</div><p>No calculations recorded yet</p></div></div>
+  </div>
+
   <div class="card">
     <div class="card-hdr"><span class="card-title">&#128336; Inbound Load History</span><span class="badge b-gr" id="proc-load-count">0 loads</span></div>
     <div id="proc-inbound-list"><div class="empty"><div class="ei">&#11015;</div><p>No inbound loads yet</p></div></div>
@@ -532,7 +554,7 @@ const APP = {
     ejsKey:'', ejsSvc:'', ejsTmpl:'',
     alertEmail:'buffalo@sucro.us', threshold:3
   },
-  data: { entries:[] },
+  data: { entries:[], calculations:[], settledThrough:0 },
   tokenClient: null,
   sheetsReady: false,
   viewMode: 'admin',
@@ -851,24 +873,40 @@ const APP = {
 
   // ── DASHBOARD ───────────────────────────────────────────────────
   updateDashboard() {
-    // ── All-time floor inventory (Processing) ──
-    const all = this.data.entries;
-    const allIn  = all.filter(e=>e.type==='inbound').reduce((a,e)=>a+e.mt,0);
-    const allLiq = all.filter(e=>e.type==='liquid').reduce((a,e)=>a+e.mt,0);
-    const allTrk = all.filter(e=>e.type==='truck').reduce((a,e)=>a+e.mt,0);
-    const allRl  = all.filter(e=>e.type==='rail').reduce((a,e)=>a+e.mt,0);
-    const allMol = all.filter(e=>e.type==='molasses').reduce((a,e)=>a+e.mt,0);
-    const allOut = allLiq+allTrk+allRl+allMol;
-    const onFloor = Math.max(allIn-allOut, 0);
+    // ── Current batch (entries since last calculation) ──
+    const settled = this.data.settledThrough || 0;
+    const batch = this.data.entries.filter(e => e.id > settled);
+    const batchIn  = batch.filter(e=>e.type==='inbound').reduce((a,e)=>a+e.mt,0);
+    const batchLiq = batch.filter(e=>e.type==='liquid').reduce((a,e)=>a+e.mt,0);
+    const batchTrk = batch.filter(e=>e.type==='truck').reduce((a,e)=>a+e.mt,0);
+    const batchRl  = batch.filter(e=>e.type==='rail').reduce((a,e)=>a+e.mt,0);
+    const batchMol = batch.filter(e=>e.type==='molasses').reduce((a,e)=>a+e.mt,0);
+    const batchOut = batchLiq+batchTrk+batchRl+batchMol;
+    const onFloor  = Math.max(batchIn - batchOut, 0);
 
     document.getElementById('d-floor').textContent = onFloor.toFixed(3);
-    document.getElementById('d-floor-in').textContent = allIn.toFixed(2);
-    document.getElementById('d-floor-out').textContent = allOut.toFixed(2);
+    document.getElementById('d-floor-in').textContent = batchIn.toFixed(2);
+    document.getElementById('d-floor-out').textContent = batchOut.toFixed(2);
 
-    // Color the floor card based on stock level
-    const floorCard = document.getElementById('d-floor').closest('.card');
-    floorCard.style.borderColor = onFloor < 5 ? 'var(--red)' : onFloor < 20 ? 'var(--org)' : 'var(--acc)';
-    document.getElementById('d-floor').style.color = onFloor < 5 ? 'var(--red)' : onFloor < 20 ? 'var(--org)' : 'var(--acc)';
+    const fc = document.getElementById('floor-card');
+    const col = onFloor===0 ? 'var(--bdr)' : batchIn===0 ? 'var(--bdr)' : 'var(--acc)';
+    fc.style.borderColor = col;
+    document.getElementById('d-floor').style.color = col;
+
+    // ── Last recorded weight loss ──
+    const calcs = this.data.calculations || [];
+    const lastCalc = calcs.length ? calcs[calcs.length-1] : null;
+    const llCard = document.getElementById('last-loss-card');
+    if(lastCalc) {
+      llCard.style.display = 'block';
+      document.getElementById('d-last-loss-pct').textContent = lastCalc.lossPct.toFixed(2)+'%';
+      document.getElementById('d-last-loss-detail').textContent =
+        lastCalc.date+' · '+lastCalc.weightLoss.toFixed(3)+' MT lost of '+lastCalc.totalIn.toFixed(2)+' MT received';
+      llCard.style.borderColor = lastCalc.lossPct > this.cfg.threshold ? 'var(--red)' : 'var(--grn)';
+      document.getElementById('d-last-loss-pct').style.color = lastCalc.lossPct > this.cfg.threshold ? 'var(--red)' : 'var(--grn)';
+    } else {
+      llCard.style.display = 'none';
+    }
 
     // ── Today's stats ──
     const t=this.getDayTotals(this.todayStr());
@@ -963,63 +1001,135 @@ const APP = {
       '<div class="hist-sub">'+sub+'</div></div><span class="hist-time">'+e.time+'</span></div>';
   },
 
+  // ── CALCULATE WEIGHT LOSS ───────────────────────────────────────
+  calculateWeightLoss() {
+    const settled = this.data.settledThrough || 0;
+    const batch = this.data.entries.filter(e => e.id > settled);
+    const batchIn  = batch.filter(e=>e.type==='inbound').reduce((a,e)=>a+e.mt,0);
+    const batchOut = batch.filter(e=>e.type!=='inbound').reduce((a,e)=>a+e.mt,0);
+    const weightLoss = Math.max(batchIn - batchOut, 0);
+    const lossPct = batchIn > 0 ? (weightLoss / batchIn * 100) : 0;
+
+    if(batchIn === 0) return this.toast('No inbound entries in current batch','err');
+
+    if(!confirm(
+      'Calculate weight loss for current batch?\n\n'+
+      'Batch Inbound:  '+batchIn.toFixed(3)+' MT\n'+
+      'Batch Outbound: '+batchOut.toFixed(3)+' MT\n'+
+      'Weight Loss:    '+weightLoss.toFixed(3)+' MT ('+lossPct.toFixed(2)+'%)\n\n'+
+      'This will close the batch and reset Processing to zero.'
+    )) return;
+
+    // Record the calculation
+    const calc = {
+      id: Date.now(),
+      date: this.todayStr(),
+      time: this.fmtTime(),
+      totalIn: batchIn,
+      totalOut: batchOut,
+      weightLoss: weightLoss,
+      lossPct: lossPct,
+      entryCount: batch.length
+    };
+    if(!this.data.calculations) this.data.calculations = [];
+    this.data.calculations.push(calc);
+
+    // Mark all current entries as settled
+    const latestId = Math.max(...this.data.entries.map(e=>e.id));
+    this.data.settledThrough = latestId;
+
+    localStorage.setItem('sl_data', JSON.stringify(this.data));
+
+    // Sync to Google Sheets
+    this.syncToSheets('DailySummary',[
+      calc.date, calc.time, calc.totalIn.toFixed(4), calc.totalOut.toFixed(4),
+      calc.weightLoss.toFixed(4), calc.lossPct.toFixed(2), 'CALCULATED', new Date().toISOString()
+    ]);
+
+    // Alert check
+    if(lossPct > this.cfg.threshold) this.sendAlert(lossPct, batchIn, batchOut);
+
+    this.toast('Weight loss recorded: '+weightLoss.toFixed(3)+' MT ('+lossPct.toFixed(2)+'%)');
+    this.updateDashboard();
+    this.renderProcessing();
+  },
+
   // ── PROCESSING ──────────────────────────────────────────────────
   renderProcessing() {
-    const all = this.data.entries;
-    const inbounds = all.filter(e=>e.type==='inbound');
-    const outbounds = all.filter(e=>e.type!=='inbound');
-    const totalIn = inbounds.reduce((a,e)=>a+e.mt,0);
-    const liquid = outbounds.filter(e=>e.type==='liquid').reduce((a,e)=>a+e.mt,0);
-    const truck = outbounds.filter(e=>e.type==='truck').reduce((a,e)=>a+e.mt,0);
-    const rail = outbounds.filter(e=>e.type==='rail').reduce((a,e)=>a+e.mt,0);
-    const molasses = outbounds.filter(e=>e.type==='molasses').reduce((a,e)=>a+e.mt,0);
-    const totalOut = liquid+truck+rail+molasses;
-    const onFloor = Math.max(totalIn-totalOut,0);
+    const settled = this.data.settledThrough || 0;
+    const batch = this.data.entries.filter(e => e.id > settled);
+    const allEntries = this.data.entries;
+
+    const inbounds  = batch.filter(e=>e.type==='inbound');
+    const outbounds = batch.filter(e=>e.type!=='inbound');
+    const batchIn   = inbounds.reduce((a,e)=>a+e.mt,0);
+    const liquid    = outbounds.filter(e=>e.type==='liquid').reduce((a,e)=>a+e.mt,0);
+    const truck     = outbounds.filter(e=>e.type==='truck').reduce((a,e)=>a+e.mt,0);
+    const rail      = outbounds.filter(e=>e.type==='rail').reduce((a,e)=>a+e.mt,0);
+    const molasses  = outbounds.filter(e=>e.type==='molasses').reduce((a,e)=>a+e.mt,0);
+    const batchOut  = liquid+truck+rail+molasses;
+    const onFloor   = Math.max(batchIn - batchOut, 0);
 
     document.getElementById('proc-stock').textContent = onFloor.toFixed(3);
-    document.getElementById('proc-in').textContent = totalIn.toFixed(2);
-    document.getElementById('proc-out').textContent = totalOut.toFixed(2);
+    document.getElementById('proc-in').textContent = batchIn.toFixed(2);
+    document.getElementById('proc-out').textContent = batchOut.toFixed(2);
 
-    // color stock card
     const stockCard = document.getElementById('proc-stock').parentElement;
-    stockCard.className = 'stat-c'+(onFloor<5?' rd':onFloor<20?' or':' ac')+' stat-c';
     stockCard.style.gridColumn='span 2';
+    stockCard.style.borderColor = onFloor===0 ? 'var(--bdr)' : batchIn===0 ? 'var(--bdr)' : 'var(--acc)';
 
     // allocation bars
-    const maxOut = Math.max(totalOut,0.001);
+    const maxOut = Math.max(batchOut, 0.001);
     [{id:'liquid',v:liquid},{id:'truck',v:truck},{id:'rail',v:rail},{id:'mol',v:molasses}].forEach(b=>{
       document.getElementById('proc-bar-'+b.id).style.width=Math.min(b.v/maxOut*100,100).toFixed(1)+'%';
       document.getElementById('proc-bv-'+b.id).textContent=b.v.toFixed(2);
     });
 
-    // Inbound list
-    const ibEl = document.getElementById('proc-inbound-list');
-    document.getElementById('proc-load-count').textContent=inbounds.length+' loads';
-    ibEl.innerHTML = inbounds.length ? [...inbounds].reverse().map(e=>`
-      <div class="hist-item">
-        <div class="hist-dot" style="background:#7a9a2e">&#11015;</div>
-        <div class="hist-info">
-          <div class="hist-val">${e.mt.toFixed(3)} MT ${e.adjusted?'<span class="badge b-or">adjusted</span>':''}</div>
-          <div class="hist-sub">${e.date} ${e.time} &nbsp;·&nbsp; ${e.operator}${e.notes?' · '+e.notes:''}</div>
-        </div>
-      </div>`).join('') : '<div class="empty"><div class="ei">&#11015;</div><p>No inbound loads yet</p></div>';
+    // Weight loss calculation history
+    const calcs = this.data.calculations || [];
+    document.getElementById('proc-calc-count').textContent = calcs.length+' records';
+    document.getElementById('proc-calc-list').innerHTML = calcs.length ?
+      [...calcs].reverse().map(c=>`
+        <div class="hist-item">
+          <div class="hist-dot" style="background:${c.lossPct>this.cfg.threshold?'var(--red)':'var(--grn)'}">&#128201;</div>
+          <div class="hist-info">
+            <div class="hist-val">${c.lossPct.toFixed(2)}% loss
+              <span class="badge ${c.lossPct>this.cfg.threshold?'b-rd':'b-gr'}">${c.weightLoss.toFixed(3)} MT</span>
+            </div>
+            <div class="hist-sub">${c.date} ${c.time} &nbsp;·&nbsp; In: ${c.totalIn.toFixed(2)} MT &nbsp;·&nbsp; Out: ${c.totalOut.toFixed(2)} MT</div>
+          </div>
+        </div>`).join('') :
+      '<div class="empty"><div class="ei">&#128201;</div><p>No calculations yet — press Calculate when batch is complete</p></div>';
 
-    // Outbound list
-    const obEl = document.getElementById('proc-outbound-list');
-    document.getElementById('proc-out-count').textContent=outbounds.length+' shipments';
+    // Inbound list (current batch only)
+    document.getElementById('proc-load-count').textContent = inbounds.length+' loads';
+    document.getElementById('proc-inbound-list').innerHTML = inbounds.length ?
+      [...inbounds].reverse().map(e=>`
+        <div class="hist-item">
+          <div class="hist-dot" style="background:#7a9a2e">&#11015;</div>
+          <div class="hist-info">
+            <div class="hist-val">${e.mt.toFixed(3)} MT ${e.adjusted?'<span class="badge b-or">adjusted</span>':''}</div>
+            <div class="hist-sub">${e.date} ${e.time} &nbsp;·&nbsp; ${e.operator}${e.notes?' · '+e.notes:''}</div>
+          </div>
+        </div>`).join('') :
+      '<div class="empty"><div class="ei">&#11015;</div><p>No inbound in current batch</p></div>';
+
+    // Outbound list (current batch only)
     const typeColors={liquid:'#1565c0',truck:'#e65100',rail:'#6a1b9a',molasses:'#c62828'};
     const typeIcons={liquid:'&#127855;',truck:'&#128665;',rail:'&#128642;',molasses:'&#129749;'};
     const typeLabels={liquid:'Liquid Sugar',truck:'Truck',rail:'Rail',molasses:'Molasses'};
-    obEl.innerHTML = outbounds.length ? [...outbounds].reverse().map(e=>`
-      <div class="hist-item">
-        <div class="hist-dot" style="background:${typeColors[e.type]}">${typeIcons[e.type]}</div>
-        <div class="hist-info">
-          <div class="hist-val">${e.mt.toFixed(3)} MT <span class="badge" style="background:#f0f0f0;color:#555">${typeLabels[e.type]}</span></div>
-          <div class="hist-sub">${e.date} ${e.time} &nbsp;·&nbsp; ${e.client||''}</div>
-        </div>
-      </div>`).join('') : '<div class="empty"><div class="ei">&#11014;</div><p>No outbound shipments yet</p></div>';
+    document.getElementById('proc-out-count').textContent = outbounds.length+' shipments';
+    document.getElementById('proc-outbound-list').innerHTML = outbounds.length ?
+      [...outbounds].reverse().map(e=>`
+        <div class="hist-item">
+          <div class="hist-dot" style="background:${typeColors[e.type]}">${typeIcons[e.type]}</div>
+          <div class="hist-info">
+            <div class="hist-val">${e.mt.toFixed(3)} MT <span class="badge" style="background:#f0f0f0;color:#555">${typeLabels[e.type]}</span></div>
+            <div class="hist-sub">${e.date} ${e.time} &nbsp;·&nbsp; ${e.client||''}</div>
+          </div>
+        </div>`).join('') :
+      '<div class="empty"><div class="ei">&#11014;</div><p>No outbound in current batch</p></div>';
 
-    // Update proc-date
     const el = document.getElementById('proc-date');
     if(el) el.textContent = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'});
   },
