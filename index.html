@@ -6,7 +6,6 @@
 <title>SweetLife Buffalo — Daily Inventory</title>
 <script src="https://apis.google.com/js/api.js" onload="window._gapiReady=true;window._checkGoogleReady&&window._checkGoogleReady()"></script>
 <script src="https://accounts.google.com/gsi/client" onload="window._gsiReady=true;window._checkGoogleReady&&window._checkGoogleReady()"></script>
-<script src="https://cdn.emailjs.com/dist/email.min.js"></script>
 <style>
 :root{--pri:#1a1a1a;--acc:#7a9a2e;--adk:#5a7422;--bg:#ffffff;--card:#fff;--bdr:#e0e0d8;--txt:#2d2d2d;--mut:#888;--red:#e53935;--grn:#43a047;--org:#fb8c00;--nav:64px;--hdr:68px}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -146,8 +145,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <span class="sec-title">&#128202; Daily Summary</span>
     <span class="date-chip" id="dash-date">Today</span>
   </div>
-  <div id="alert-container"></div>
-
   <!-- Processing Floor -->
   <div class="card" id="floor-card" style="border:2px solid var(--acc);padding:18px;margin-bottom:14px">
     <div style="text-align:center;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.6px">&#127981; Processing Floor — Current Batch</div>
@@ -159,12 +156,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     </div>
   </div>
 
-  <!-- Last Weight Loss Record -->
-  <div class="card" id="last-loss-card" style="display:none;border:2px solid var(--red);padding:18px;margin-bottom:14px">
-    <div style="text-align:center;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.6px">&#128201; Last Recorded Weight Loss</div>
-    <div style="text-align:center;font-size:48px;font-weight:900;color:var(--red);letter-spacing:-2px;line-height:1" id="d-last-loss-pct">0.0%</div>
-    <div style="text-align:center;font-size:12px;color:var(--mut);margin-top:3px" id="d-last-loss-detail"></div>
-  </div>
 
   <!-- Today's stats -->
   <div style="font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Today's Activity</div>
@@ -510,13 +501,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div class="fg"><label>Spreadsheet ID</label><input type="text" id="cfg-sheet-id" placeholder="1BxiMVs0XRA5nF..."></div>
     </div>
     <div class="card" style="margin-bottom:14px">
-      <div class="card-title" style="margin-bottom:12px">&#128231; Email Alerts (EmailJS)</div>
-      <div class="fg"><label>EmailJS Public Key</label><input type="text" id="cfg-ejs-key" placeholder="user_xxxxxxxxxx"></div>
-      <div class="fg"><label>Service ID</label><input type="text" id="cfg-ejs-svc" placeholder="service_xxxxxxx"></div>
-      <div class="fg"><label>Template ID</label><input type="text" id="cfg-ejs-tmpl" placeholder="template_xxxxxxx"></div>
-      <p style="font-size:11px;color:var(--mut)">Alert fires to: buffalo@sucro.us &nbsp;|&nbsp; Threshold: &gt;3% over 3 days</p>
-    </div>
-    <div class="card" style="margin-bottom:14px">
       <div class="card-title" style="margin-bottom:10px">&#128218; Setup Guide</div>
       <div class="setup-step">
         <div class="setup-num">1</div>
@@ -525,10 +509,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div class="setup-step">
         <div class="setup-num">2</div>
         <div class="setup-txt"><h4>Create Google Spreadsheet</h4><p>New Google Sheet with these tabs: <code>Inbound</code>&nbsp;<code>LiquidSugar</code>&nbsp;<code>TruckOut</code>&nbsp;<code>RailOut</code>&nbsp;<code>Molasses</code>&nbsp;<code>DailySummary</code>. Copy the Sheet ID from the URL.</p></div>
-      </div>
-      <div class="setup-step">
-        <div class="setup-num">3</div>
-        <div class="setup-txt"><h4>EmailJS Setup</h4><p>Sign up at emailjs.com &#183; Connect Gmail &#183; Create template with: <code>{{date}}</code> <code>{{loss_pct}}</code> <code>{{inbound}}</code> <code>{{outbound}}</code>. Set recipient to <code>buffalo@sucro.us</code></p></div>
       </div>
     </div>
     <button class="btn btn-pri" onclick="APP.saveConfig()">&#128190; Save Configuration</button>
@@ -551,8 +531,6 @@ document.getElementById('logo-img').src = LOGO_SRC;
 const APP = {
   cfg: {
     clientId:'', apiKey:'', sheetId:'',
-    ejsKey:'', ejsSvc:'', ejsTmpl:'',
-    alertEmail:'buffalo@sucro.us', threshold:3
   },
   data: { entries:[], calculations:[], settledThrough:0 },
   tokenClient: null,
@@ -586,7 +564,6 @@ const APP = {
       }
     };
     if(this.cfg.clientId && this.cfg.apiKey) window._checkGoogleReady();
-    if(this.cfg.ejsKey && typeof emailjs !== 'undefined') emailjs.init(this.cfg.ejsKey);
   },
 
   applyViewMode() {
@@ -867,7 +844,6 @@ const APP = {
     this.renderHistories();
     this.renderProcessing();
     this.populateAdjSelector();
-    this.checkAlerts();
     this.syncDailySummary();
   },
 
@@ -902,8 +878,8 @@ const APP = {
       document.getElementById('d-last-loss-pct').textContent = lastCalc.lossPct.toFixed(2)+'%';
       document.getElementById('d-last-loss-detail').textContent =
         lastCalc.date+' · '+lastCalc.weightLoss.toFixed(3)+' MT lost of '+lastCalc.totalIn.toFixed(2)+' MT received';
-      llCard.style.borderColor = lastCalc.lossPct > this.cfg.threshold ? 'var(--red)' : 'var(--grn)';
-      document.getElementById('d-last-loss-pct').style.color = lastCalc.lossPct > this.cfg.threshold ? 'var(--red)' : 'var(--grn)';
+      llCard.style.borderColor = 'var(--grn)';
+      document.getElementById('d-last-loss-pct').style.color = 'var(--grn)';
     } else {
       llCard.style.display = 'none';
     }
@@ -923,7 +899,6 @@ const APP = {
       document.getElementById('bv-'+b.id).textContent=b.v.toFixed(2);
     });
     this.renderThreeDayChart();
-    this.renderAlerts();
   },
 
   renderThreeDayChart() {
@@ -942,17 +917,6 @@ const APP = {
         '</div>';
     }
     cont.innerHTML=html||'<div class="empty"><p>No data yet</p></div>';
-  },
-
-  renderAlerts() {
-    const cont=document.getElementById('alert-container');
-    const {totalIn,totalOut,days}=this.getThreeDayTotals();
-    const pct=totalIn>0?(totalIn-totalOut)/totalIn*100:0;
-    if(days>=1&&pct>this.cfg.threshold){
-      cont.innerHTML='<div class="alert-banner"><span class="ai">&#128680;</span>'+
-        '<div><strong>Weight Loss Alert</strong><br>3-day average loss: <strong>'+pct.toFixed(1)+'%</strong> (threshold '+this.cfg.threshold+'%)'+
-        '<br>Alert sent to '+this.cfg.alertEmail+'</div></div>';
-    } else { cont.innerHTML=''; }
   },
 
   getThreeDayTotals() {
@@ -1046,9 +1010,6 @@ const APP = {
       calc.weightLoss.toFixed(4), calc.lossPct.toFixed(2), 'CALCULATED', new Date().toISOString()
     ]);
 
-    // Alert check
-    if(lossPct > this.cfg.threshold) this.sendAlert(lossPct, batchIn, batchOut);
-
     this.toast('Weight loss recorded: '+weightLoss.toFixed(3)+' MT ('+lossPct.toFixed(2)+'%)');
     this.updateDashboard();
     this.renderProcessing();
@@ -1091,10 +1052,10 @@ const APP = {
     document.getElementById('proc-calc-list').innerHTML = calcs.length ?
       [...calcs].reverse().map(c=>`
         <div class="hist-item">
-          <div class="hist-dot" style="background:${c.lossPct>this.cfg.threshold?'var(--red)':'var(--grn)'}">&#128201;</div>
+          <div class="hist-dot" style="background:${'var(--grn)'}">&#128201;</div>
           <div class="hist-info">
             <div class="hist-val">${c.lossPct.toFixed(2)}% loss
-              <span class="badge ${c.lossPct>this.cfg.threshold?'b-rd':'b-gr'}">${c.weightLoss.toFixed(3)} MT</span>
+              <span class="badge ${'b-gr'}">${c.weightLoss.toFixed(3)} MT</span>
             </div>
             <div class="hist-sub">${c.date} ${c.time} &nbsp;·&nbsp; In: ${c.totalIn.toFixed(2)} MT &nbsp;·&nbsp; Out: ${c.totalOut.toFixed(2)} MT</div>
           </div>
@@ -1166,47 +1127,6 @@ const APP = {
         <button class="btn btn-pri" style="width:auto;padding:7px 14px;font-size:12px;margin:0" onclick="navigator.clipboard.writeText('${adminUrl}');APP.toast('Admin link copied!')">Copy</button>
       </div>
       <p style="font-size:11px;color:var(--mut);margin-top:8px">Full access: dashboard, processing, all tabs, configuration.</p>`;
-  },
-
-  // ── ALERTS ──────────────────────────────────────────────────────
-  checkAlerts() {
-    const {totalIn,totalOut,days}=this.getThreeDayTotals();
-    if(days<1||totalIn===0) return;
-    const pct=(totalIn-totalOut)/totalIn*100;
-    if(pct>this.cfg.threshold) this.sendAlert(pct,totalIn,totalOut);
-    this.renderAlerts();
-  },
-
-  async sendAlert(pct,inbound,outbound) {
-    const key='sl_alerted_'+this.todayStr();
-    if(localStorage.getItem(key)) return;
-    localStorage.setItem(key,'1');
-    const params={
-      to_email:this.cfg.alertEmail,
-      date:new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'}),
-      loss_pct:pct.toFixed(2),
-      inbound:inbound.toFixed(2),
-      outbound:outbound.toFixed(2),
-      net:(inbound-outbound).toFixed(2),
-      threshold:this.cfg.threshold
-    };
-    if(this.cfg.ejsKey&&this.cfg.ejsSvc&&this.cfg.ejsTmpl&&typeof emailjs!=='undefined'){
-      try { await emailjs.send(this.cfg.ejsSvc,this.cfg.ejsTmpl,params); console.log('Alert sent'); }
-      catch(err){ console.warn('EmailJS failed',err); this.fallbackEmail(params); }
-    } else { this.fallbackEmail(params); }
-  },
-
-  fallbackEmail(p) {
-    const sub=encodeURIComponent('[SweetLife Buffalo] Weight Loss Alert — '+p.loss_pct+'%');
-    const body=encodeURIComponent(
-      'WEIGHT LOSS ALERT — Buffalo Refinery\n\n'+
-      '3-Day Average Weight Loss: '+p.loss_pct+'% (threshold: '+p.threshold+'%)\n\n'+
-      'Total Inbound (3 days): '+p.inbound+' MT\n'+
-      'Total Outbound (3 days): '+p.outbound+' MT\n'+
-      'Net Loss: '+p.net+' MT\n\n'+
-      'Date: '+p.date+'\n\nGenerated automatically by SweetLife Buffalo Inventory App'
-    );
-    window.open('mailto:'+p.to_email+'?subject='+sub+'&body='+body);
   },
 
   // ── GOOGLE SHEETS ────────────────────────────────────────────────
@@ -1284,9 +1204,6 @@ const APP = {
     document.getElementById('cfg-client-id').value=this.cfg.clientId||'';
     document.getElementById('cfg-api-key').value=this.cfg.apiKey||'';
     document.getElementById('cfg-sheet-id').value=this.cfg.sheetId||'';
-    document.getElementById('cfg-ejs-key').value=this.cfg.ejsKey||'';
-    document.getElementById('cfg-ejs-svc').value=this.cfg.ejsSvc||'';
-    document.getElementById('cfg-ejs-tmpl').value=this.cfg.ejsTmpl||'';
     document.getElementById('config-modal').classList.add('open');
   },
 
@@ -1296,11 +1213,7 @@ const APP = {
     this.cfg.clientId=document.getElementById('cfg-client-id').value.trim();
     this.cfg.apiKey=document.getElementById('cfg-api-key').value.trim();
     this.cfg.sheetId=document.getElementById('cfg-sheet-id').value.trim();
-    this.cfg.ejsKey=document.getElementById('cfg-ejs-key').value.trim();
-    this.cfg.ejsSvc=document.getElementById('cfg-ejs-svc').value.trim();
-    this.cfg.ejsTmpl=document.getElementById('cfg-ejs-tmpl').value.trim();
     localStorage.setItem('sl_cfg',JSON.stringify(this.cfg));
-    if(this.cfg.ejsKey&&typeof emailjs!=='undefined') emailjs.init(this.cfg.ejsKey);
     if(this.cfg.clientId&&this.cfg.apiKey) this.initGoogle();
     this.closeConfig();
     this.toast('Configuration saved!');
@@ -1332,3 +1245,4 @@ window.addEventListener('DOMContentLoaded',()=>APP.init());
 </script>
 </body>
 </html>
+
