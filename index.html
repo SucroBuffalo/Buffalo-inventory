@@ -1131,6 +1131,7 @@ const APP = {
         callback:(r)=>{
           if(r.error){ console.warn('OAuth error',r); this.setConn(false); return; }
           this.accessToken=r.access_token;
+          gapi.client.setToken({access_token:r.access_token});
           this.setConn(true);
           this.toast('✅ Connected to Google Sheets!');
         }
