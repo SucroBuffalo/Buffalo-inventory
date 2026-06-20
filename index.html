@@ -1161,14 +1161,17 @@ const APP = {
   },
 
   async syncToSheets(tab,row) {
-    if(!this.sheetsReady||!this.cfg.sheetId) return;
+    if(!this.sheetsReady) { this.toast('Not connected to Google','err'); return; }
+    if(!this.cfg.sheetId) { this.toast('No Sheet ID saved','err'); return; }
     try {
       await gapi.client.sheets.spreadsheets.values.append({
         spreadsheetId:this.cfg.sheetId, range:tab+'!A1',
         valueInputOption:'USER_ENTERED', resource:{values:[row]}
       });
+      this.toast('✅ Saved to '+tab);
     } catch(e){
       console.warn('Sheets sync failed',e);
+      this.toast('Sheet error: '+( e.result&&e.result.error ? e.result.error.message : e.status||'unknown'),'err');
       if(e.status===401&&this.tokenClient) this.tokenClient.requestAccessToken({prompt:''});
     }
   },
